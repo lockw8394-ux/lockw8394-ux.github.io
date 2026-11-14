@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RPG GM</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: #111; color: #eee;
+    display: flex; flex-direction: column;
+    height: 100vh; height: 100dvh;
+  }
+  #top { display: flex; justify-content: space-between; align-items: center;
+         padding: 8px 12px; background: #1a1a1a; font-size: 13px; color: #aaa; gap: 6px; }
+  #top button { background: #333; color: #ddd; font-size: 12px; padding: 6px 10px; }
+  #chat { flex: 1; overflow-y: auto; padding: 12px; }
+  .msg { white-space: pre-wrap; word-break: break-word; margin: 8px 0;
+         padding: 10px 12px; border-radius: 12px; line-height: 1.5; font-size: 15px; }
+  .user { background: #2b4a7a; margin-left: 12%; }
+  .model { background: #222; margin-right: 4%; }
+  #status { font-size: 12px; color: #aaa; padding: 0 12px; min-height: 16px; }
+  #bar { display: flex; gap: 8px; padding: 8px; background: #1a1a1a; }
+  textarea { flex: 1; height: 56px; border-radius: 8px; border: 0; padding: 8px;
+             font-size: 16px; font-family: inherit; resize: none; }
+  button { border: 0; border-radius: 8px; padding: 0 16px; font-size: 16px; cursor: pointer; }
+  #send { background: #3b7ddd; color: #fff; }
+  #send:disabled { background: #555; }
+  .choice { display: block; width: 100%; padding: 12px; margin-bottom: 8px; background: #3b7ddd; color: #fff; text-align: left; }
+  #cancel { display: block; width: 100%; padding: 10px; background: #444; color: #ddd; }
+  .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+             background: rgba(0,0,0,.75); align-items: center; justify-content: center; padding: 16px; }
+  .box { background: #222; border-radius: 12px; padding: 16px; max-width: 360px; width: 100%; max-height: 90vh; overflow-y: auto; }
+  .box input { width: 100%; box-sizing: border-box; padding: 10px; font-size: 16px; border-radius: 8px; border: 0; margin-bottom: 8px; }
+  .box label { display: block; font-size: 12px; color: #aaa; margin: 6px 0 4px; }
+  .box a { color: #7db3ff; }
+</style>
+</head>
+<body>
+  <div id="top">
+    <span>RPG GM</span>
+    <span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+      <button id="copylink">🔗 ลิงก์เซฟ</button>
+      <button id="entercode">🔑 ตั้งค่า</button>
+      <button id="newgame">เริ่มเกมใหม่</button>
+    </span>
+  </div>
+  <div id="chat"></div>
+  <div id="status"></div>
+  <div id="bar">
+    <textarea id="input" placeholder="พิมพ์การกระทำ หรือ เริ่มเกม"></textarea>
+    <button id="send">ส่ง</button>
+  </div>
+
+<div id="modal" class="overlay">
+  <div class="box">
+    <div style="margin-bottom:12px;font-size:15px;line-height:1.5;">เริ่มเกมใหม่ เลือกโลก<br><span style="font-size:12px;color:#aaa;">(บันทึกเก่าถูกเก็บไว้ในชีตอีกแท็บ ไม่ถูกลบ)</span></div>
+    <button class="choice" data-preset="magic">🏫 โรงเรียนเวทมนตร์ (แบบเดิม)</button>
+    <button class="choice" data-preset="custom">🌍 ออกแบบโลกใหม่ (AI ช่วยสร้าง)</button>
+    <button id="cancel">ยกเลิก</button>
+  </div>
+</div>
+
+<div id="codeModal" class="overlay">
+  <div class="box">
+    <div id="codeMsg" style="margin-bottom:10px;font-size:14px;line-height:1.5;white-space:pre-wrap;"></div>
+    <label>Gemini API key ของคุณ (ขอฟรีที่ <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>)</label>
+    <input id="keyInput" type="password" placeholder="วางคีย์ที่นี่" autocomplete="off">
+    <div style="font-size:11px;color:#888;margin-bottom:8px;">คีย์เก็บไว้ในเบราว์เซอร์นี้ และถูกส่งผ่านเซิร์ฟเวอร์ของเกมเพื่อเรียก Gemini เท่านั้น ไม่ถูกบันทึกลงชีต</div>
+    <label>รหัสผู้เล่น (ถ้ามีรหัสเดิมให้ใส่ ถ้าไม่มีกดสร้างผู้เล่นใหม่)</label>
+    <input id="codeInput" placeholder="รหัสผู้เล่น" autocomplete="off">
+    <button class="choice" id="codeGo">เข้าด้วยรหัสนี้</button>
+    <button class="choice" id="codeNew">✨ สร้างผู้เล่นใหม่</button>
+  </div>
+</div>
+
+<script>
+  // ★ วาง URL ของ Web App (ที่ลงท้ายด้วย /exec) จาก Apps Script ตรงนี้ ★
+  var API_URL = 'https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnS9J1BahBmr_sMkSFS49g9d2Z6Hzwkppcd1Zi_3vnNAvjnYLPZNxpjW34aqPROu6pnEz1Do7pp9tgXbo-kLFsLkjWRPg-0lDh4ISjM60fUX3C9M2AluIZJl3oDbnwbhPPhz3sU46dbe9nEyfhopP9EoYpBTChi1RqPhy2NQxy1RQzB0CjRKfkiPMW-qxveG8GZdV_18eIxgLGoAVSAw6tSiw8SSl8RN3kzr8v3hr73qhlUvbAZrXABd4tnsnm4mEGPZ-K0nA_3UtVUxMXTcUW6Jjui09A&lib=MonGikzCC0utnomcW5xBjNLH-NN-wCZOb';
+
+  var chat = document.getElementById('chat');
+  var input = document.getElementById('input');
+  var sendBtn = document.getElementById('send');
+  var statusEl = document.getElementById('status');
+
+  function add(role, text) {
+    var d = document.createElement('div');
+    d.className = 'msg ' + role;
+    d.textContent = text;
+    chat.appendChild(d);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function setBusy(busy, label) {
+    sendBtn.disabled = busy;
+    statusEl.textContent = busy ? (label || 'กำลังคิด...') : '';
+  }
+
+  // เรียก API ของ Apps Script (ส่งเป็น text/plain เพื่อไม่ให้เบราว์เซอร์ต้องทำ preflight)
+  function api(action, payload) {
+    if (API_URL.indexOf('https://script.google.com/') !== 0) {
+      return Promise.reject(new Error('ยังไม่ได้ตั้งค่า API_URL ในไฟล์ index.html'));
+    }
+    var body = Object.assign({ action: action }, payload || {});
+    return fetch(API_URL, { method: 'POST', body: JSON.stringify(body), redirect: 'follow' })
+      .then(function (r) { return r.json(); })
+      .catch(function (e) {
+        throw new Error('เชื่อมต่อเซิร์ฟเวอร์เกมไม่ได้ (' + e.message + ')');
+      });
+  }
+
+  var CODE_RE = /^[A-Za-z0-9\-]{6,40}$/;
+  var code = '';
+  var apiKey = '';
+  try { code = localStorage.getItem('rpg_code') || ''; } catch (e) {}
+  try { apiKey = localStorage.getItem('rpg_key') || ''; } catch (e) {}
+  var fromLink = '';
+  try { fromLink = decodeURIComponent((location.hash || '').replace(/^#/, '')); } catch (e) {}
+  if (CODE_RE.test(fromLink)) code = fromLink;   // รหัสในลิงก์มาก่อนรหัสที่จำไว้ในเบราว์เซอร์
+
+  function syncMemory(done) {
+    setBusy(true, '💾 กำลังบันทึกความจำ...');
+    api('memory', { code: code, key: apiKey })
+      .then(function (res) {
+        if (res && res.more) { syncMemory(done); return; }
+        var warn = '';
+        if (res && !res.ok && !res.busy) {
+          warn = '⚠️ บันทึกความจำไม่สำเร็จ (จะลองใหม่ในเทิร์นถัดไป): ' + res.error;
+        }
+        done(warn);
+      })
+      .catch(function (err) { done('⚠️ บันทึกความจำไม่สำเร็จ: ' + err.message); });
+  }
+
+  function finishSync(warn) {
+    setBusy(false);
+    statusEl.textContent = warn || '';
+  }
+
+  // c ว่าง = สร้างผู้เล่นใหม่, มีรหัส = เล่นต่อ แล้วโหลดบทสนทนาเก่า
+  function boot(c) {
+    setBusy(true, 'กำลังโหลด...');
+    api('start', { code: c })
+      .then(function (res) {
+        if (!res.ok) { askCode('⚠️ ' + res.error); return; }
+        code = res.code;
+        try { localStorage.setItem('rpg_code', code); } catch (e) {}
+        try { history.replaceState(null, '', '#' + code); } catch (e) {}
+        chat.innerHTML = '';
+        res.history.forEach(function (r) { add(r.role, r.text); });
+        syncMemory(finishSync);
+      })
+      .catch(function (err) { setBusy(false); add('model', '⚠️ ' + err.message); });
+  }
+
+  var codeModal = document.getElementById('codeModal');
+  function askCode(msg) {
+    setBusy(false);
+    document.getElementById('codeMsg').textContent = msg ||
+      ('รหัสผู้เล่นตอนนี้: ' + code + '\nจดรหัสนี้ไว้ หรือกดปุ่ม 🔗 ลิงก์เซฟ เก็บเป็นบุ๊กมาร์ก เพื่อเล่นต่อบนเครื่องอื่น');
+    document.getElementById('codeInput').value = '';
+    document.getElementById('keyInput').value = apiKey;
+    codeModal.style.display = 'flex';
+  }
+
+  // บันทึกคีย์ที่กรอก (ต้องมีคีย์ก่อนเริ่มเล่น)
+  function saveKey() {
+    var k = document.getElementById('keyInput').value.trim();
+    if (!k) { document.getElementById('codeMsg').textContent = '⚠️ กรุณาใส่ Gemini API key ก่อน'; return false; }
+    apiKey = k;
+    try { localStorage.setItem('rpg_key', apiKey); } catch (e) {}
+    return true;
+  }
+
+  document.getElementById('entercode').addEventListener('click', function () { askCode(); });
+  document.getElementById('copylink').addEventListener('click', function () {
+    if (!code) { statusEl.textContent = 'ยังไม่มีรหัสผู้เล่น'; return; }
+    var link = location.href.split('#')[0] + '#' + code;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(function () {
+        statusEl.textContent = '✅ คัดลอกลิงก์เซฟแล้ว เก็บเป็นบุ๊กมาร์กไว้ได้ (ใครมีลิงก์นี้ก็เล่นเซฟนี้ได้)';
+      }, function () { window.prompt('คัดลอกลิงก์นี้:', link); });
+    } else {
+      window.prompt('คัดลอกลิงก์นี้:', link);
+    }
+  });
+  document.getElementById('codeGo').addEventListener('click', function () {
+    if (!saveKey()) return;
+    var c = document.getElementById('codeInput').value.trim() || code;
+    if (!c) { document.getElementById('codeMsg').textContent = '⚠️ ใส่รหัสผู้เล่น หรือกดสร้างผู้เล่นใหม่'; return; }
+    codeModal.style.display = 'none';
+    boot(c);
+  });
+  document.getElementById('codeNew').addEventListener('click', function () {
+    if (!saveKey()) return;
+    codeModal.style.display = 'none';
+    boot('');
+  });
+
+  if (code && apiKey) boot(code);
+  else if (code) askCode('พบรหัสผู้เล่นของคุณแล้ว (' + code + ')\nใส่ Gemini API key ของคุณ แล้วกด "เข้าด้วยรหัสนี้" เพื่อเล่นต่อ');
+  else askCode('ยินดีต้อนรับ ใส่ Gemini API key ของคุณ แล้วใส่รหัสผู้เล่นเดิม หรือกดสร้างผู้เล่นใหม่');
+
+  function send() {
+    var text = input.value.trim();
+    if (!text || sendBtn.disabled) return;
+    add('user', text);
+    input.value = '';
+    setBusy(true, 'กำลังคิด...');
+    api('turn', { code: code, text: text, key: apiKey })
+      .then(function (res) {
+        if (res.ok) {
+          add('model', res.text);
+          syncMemory(finishSync);   // ตอบผู้เล่นก่อน แล้วค่อยบันทึกความจำ
+        } else {
+          add('model', '⚠️ ' + res.error);
+          setBusy(false);
+        }
+      })
+      .catch(function (err) {
+        setBusy(false);
+        add('model', '⚠️ ' + err.message + '\n(ข้อความนี้ยังไม่ถูกบันทึก ลองส่งใหม่ได้)');
+      });
+  }
+
+  sendBtn.addEventListener('click', send);
+
+  var modal = document.getElementById('modal');
+  document.getElementById('newgame').addEventListener('click', function () { modal.style.display = 'flex'; });
+  document.getElementById('cancel').addEventListener('click', function () { modal.style.display = 'none'; });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.choice[data-preset]'), function (btn) {
+    btn.addEventListener('click', function () {
+      modal.style.display = 'none';
+      var preset = btn.getAttribute('data-preset');
+      setBusy(true, 'กำลังสร้างเกมใหม่...');
+      api('newgame', { code: code, preset: preset })
+        .then(function (res) {
+          if (!res.ok) { add('model', '⚠️ ' + res.error); setBusy(false); return; }
+          chat.innerHTML = '';
+          add('model', preset === 'magic'
+            ? 'เริ่มเกมใหม่ (โลกโรงเรียนเวทมนตร์) พิมพ์ เริ่มเกม'
+            : 'เริ่มเกมใหม่ พิมพ์ เริ่มเกม แล้ว GM จะถามว่าอยากเล่นโลกแบบไหน');
+          setBusy(false);
+        })
+        .catch(function (err) { add('model', '⚠️ ' + err.message); setBusy(false); });
+    });
+  });
+</script>
+</body>
+</html>
