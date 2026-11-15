@@ -35,6 +35,10 @@
   .box input { width: 100%; box-sizing: border-box; padding: 10px; font-size: 16px; border-radius: 8px; border: 0; margin-bottom: 8px; }
   .box label { display: block; font-size: 12px; color: #aaa; margin: 6px 0 4px; }
   .box a { color: #7db3ff; }
+  .choices { display: flex; flex-direction: column; gap: 6px; margin: 4px 4% 10px 0; }
+  .chbtn { background: #2a3f66; color: #fff; text-align: left; padding: 10px 12px; font-size: 14px; line-height: 1.4; white-space: normal; }
+  #cmdbtn { background: #333; color: #ddd; padding: 0 12px; }
+  #cmdGrid button { background: #333; color: #eee; font-size: 14px; padding: 10px 6px; text-align: left; }
 </style>
 </head>
 <body>
@@ -49,6 +53,7 @@
   <div id="chat"></div>
   <div id="status"></div>
   <div id="bar">
+    <button id="cmdbtn" title="คำสั่ง">📋</button>
     <textarea id="input" placeholder="พิมพ์การกระทำ หรือ เริ่มเกม"></textarea>
     <button id="send">ส่ง</button>
   </div>
@@ -75,6 +80,14 @@
   </div>
 </div>
 
+<div id="cmdModal" class="overlay">
+  <div class="box">
+    <div style="margin-bottom:10px;font-size:15px;">📋 คำสั่ง <span style="font-size:12px;color:#aaa;">(ไม่นับเทิร์น ไม่ใช้เวลาในเกม)</span></div>
+    <div id="cmdGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;"></div>
+    <button id="cmdClose" style="display:block;width:100%;padding:10px;background:#444;color:#ddd;">ปิด</button>
+  </div>
+</div>
+
 <script>
   // ★ วาง URL ของ Web App (ที่ลงท้ายด้วย /exec) จาก Apps Script ตรงนี้ ★
   var API_URL = 'https://script.google.com/macros/s/AKfycbwA_yKG52MneFH2A1NipCmJv9h8PDtw_vS-1UHDXEe4JuZrXS9jO8dNCrZE6wZlMoNZ/exec';
@@ -85,11 +98,34 @@
   var statusEl = document.getElementById('status');
 
   function add(role, text) {
+    // ลบปุ่มตัวเลือกของข้อความก่อนหน้า (ตอบไปแล้วหรือมีข้อความใหม่เข้ามา)
+    Array.prototype.forEach.call(document.querySelectorAll('.choices'), function (e) { e.remove(); });
     var d = document.createElement('div');
     d.className = 'msg ' + role;
     d.textContent = text;
     chat.appendChild(d);
+    if (role === 'model') addChoices(text);
     chat.scrollTop = chat.scrollHeight;
+  }
+
+  // แปลงตัวเลือก A) B) C) ในข้อความของ GM เป็นปุ่มกด
+  function addChoices(text) {
+    var opts = [];
+    String(text).split('\n').forEach(function (line) {
+      var m = line.match(/^\s*([A-E])[\)\.]\s+(.+)$/);
+      if (m) opts.push({ k: m[1], t: m[2].trim() });
+    });
+    if (opts.length < 2) return;
+    var box = document.createElement('div');
+    box.className = 'choices';
+    opts.forEach(function (o) {
+      var b = document.createElement('button');
+      b.className = 'chbtn';
+      b.textContent = o.k + ') ' + o.t;
+      b.addEventListener('click', function () { sendText('เลือกข้อ ' + o.k + ': ' + o.t); });
+      box.appendChild(b);
+    });
+    chat.appendChild(box);
   }
 
   function setBusy(busy, label) {
@@ -202,11 +238,10 @@
   else if (code) askCode('พบรหัสผู้เล่นของคุณแล้ว (' + code + ')\nใส่ Gemini API key ของคุณ แล้วกด "เข้าด้วยรหัสนี้" เพื่อเล่นต่อ');
   else askCode('ยินดีต้อนรับ ใส่ Gemini API key ของคุณ แล้วใส่รหัสผู้เล่นเดิม หรือกดสร้างผู้เล่นใหม่');
 
-  function send() {
-    var text = input.value.trim();
+  function sendText(text) {
+    text = String(text || '').trim();
     if (!text || sendBtn.disabled) return;
     add('user', text);
-    input.value = '';
     setBusy(true, 'กำลังคิด...');
     api('turn', { code: code, text: text, key: apiKey })
       .then(function (res) {
@@ -224,7 +259,35 @@
       });
   }
 
+  function send() {
+    var t = input.value;
+    if (!t.trim() || sendBtn.disabled) return;
+    input.value = '';
+    sendText(t);
+  }
   sendBtn.addEventListener('click', send);
+
+  // ปุ่มคำสั่งรวม (เป็นปุ่มเดียว แยกเป็นหลายปุ่มทีหลังได้)
+  var CMDS = [
+    ['/status', 'สถานะ'], ['/character', 'ตัวละคร'], ['/inventory', 'ของ'], ['/skills', 'สกิล'],
+    ['/spells', 'เวท'], ['/relations', 'ความสัมพันธ์'], ['/quests', 'เควสต์'], ['/goal', 'เป้าหมาย'],
+    ['/power', 'พลัง'], ['/money', 'เงิน'], ['/recap', 'สรุปเรื่อง'], ['/world', 'โลก'],
+    ['/rules', 'กฎ'], ['/help', 'ช่วยเหลือ'], ['/save', 'เซฟ'], ['/load', 'โหลด'], ['/ooc', 'คุยนอกเกม']
+  ];
+  var cmdModal = document.getElementById('cmdModal');
+  var cmdGrid = document.getElementById('cmdGrid');
+  CMDS.forEach(function (c) {
+    var b = document.createElement('button');
+    b.textContent = c[0] + ' ' + c[1];
+    b.addEventListener('click', function () {
+      cmdModal.style.display = 'none';
+      if (c[0] === '/ooc') { input.value = '/ooc '; input.focus(); }   // /ooc ต้องพิมพ์ข้อความต่อเอง
+      else sendText(c[0]);
+    });
+    cmdGrid.appendChild(b);
+  });
+  document.getElementById('cmdbtn').addEventListener('click', function () { cmdModal.style.display = 'flex'; });
+  document.getElementById('cmdClose').addEventListener('click', function () { cmdModal.style.display = 'none'; });
 
   var modal = document.getElementById('modal');
   document.getElementById('newgame').addEventListener('click', function () { modal.style.display = 'flex'; });
