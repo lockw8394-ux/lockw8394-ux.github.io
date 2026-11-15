@@ -39,6 +39,29 @@
   .chbtn { background: #2a3f66; color: #fff; text-align: left; padding: 10px 12px; font-size: 14px; line-height: 1.4; white-space: normal; }
   #cmdbtn { background: #333; color: #ddd; padding: 0 12px; }
   #cmdGrid button { background: #333; color: #eee; font-size: 14px; padding: 10px 6px; text-align: left; }
+  #hudbar { display: none; align-items: center; gap: 8px; padding: 6px 12px; background: #161616; border-bottom: 1px solid #2a2a2a; overflow-x: auto; cursor: pointer; }
+  .hb { min-width: 92px; flex: 1; border-radius: 6px; padding: 2px 4px; }
+  .hb-t { font-size: 11px; color: #ccc; margin-bottom: 3px; white-space: nowrap; }
+  .hb-track { height: 8px; background: #2b2b2b; border-radius: 4px; overflow: hidden; }
+  .hb-fill { height: 100%; width: 0; transition: width .5s ease; border-radius: 4px; }
+  .hb.down { animation: hbdown .8s; }
+  .hb.up { animation: hbup .8s; }
+  @keyframes hbdown { 0%, 100% { background: transparent; } 30% { background: rgba(229,72,77,.4); } }
+  @keyframes hbup { 0%, 100% { background: transparent; } 30% { background: rgba(34,197,94,.35); } }
+  .hc { font-size: 12px; color: #ddd; background: #262626; padding: 3px 8px; border-radius: 10px; white-space: nowrap; }
+  .hmenu { font-size: 16px; color: #aaa; padding: 0 4px; }
+  #hudTabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 10px; padding-bottom: 4px; }
+  .htab { flex: 0 0 auto; background: #333; color: #ccc; font-size: 13px; padding: 8px 12px; }
+  .htab.on { background: #3b7ddd; color: #fff; }
+  .hrow { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid #333; font-size: 14px; line-height: 1.4; }
+  .hrow small { display: block; color: #999; font-size: 12px; }
+  .hrow b { white-space: nowrap; font-weight: 600; }
+  .hnote { color: #999; font-size: 13px; padding: 8px 0; }
+  .hbig { margin: 10px 0; }
+  .hbig .hb-t { font-size: 13px; }
+  .hbig .hb-track { height: 12px; }
+  .hcombat { background: #3a1f1f; border: 1px solid #6b2b2b; border-radius: 10px; padding: 8px 10px; margin: 10px 0; font-size: 13px; line-height: 1.5; }
+  #toast { display: none; position: fixed; left: 12px; right: 12px; bottom: 78px; background: rgba(30,30,30,.96); border: 1px solid #444; border-radius: 10px; padding: 8px 12px; font-size: 13px; line-height: 1.6; z-index: 5; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -50,6 +73,7 @@
       <button id="newgame">เริ่มเกมใหม่</button>
     </span>
   </div>
+  <div id="hudbar" title="กดเพื่อดูสถานะทั้งหมด"></div>
   <div id="chat"></div>
   <div id="status"></div>
   <div id="bar">
@@ -79,6 +103,18 @@
     <button class="choice" id="codeNew">✨ สร้างผู้เล่นใหม่</button>
   </div>
 </div>
+
+<div id="hudModal" class="overlay">
+  <div class="box" style="max-width:420px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:15px;">🎮 สถานะ</span>
+      <button id="hudClose" style="background:#444;color:#ddd;padding:6px 12px;font-size:13px;">ปิด</button>
+    </div>
+    <div id="hudTabs"></div>
+    <div id="hudBody"></div>
+  </div>
+</div>
+<div id="toast"></div>
 
 <div id="cmdModal" class="overlay">
   <div class="box">
@@ -183,6 +219,7 @@
         code = res.code;
         try { localStorage.setItem('rpg_code', code); } catch (e) {}
         try { history.replaceState(null, '', '#' + code); } catch (e) {}
+        setHud(res.hud || null);
         chat.innerHTML = '';
         res.history.forEach(function (r) { add(r.role, r.text); });
         syncMemory(finishSync);
@@ -247,6 +284,7 @@
       .then(function (res) {
         if (res.ok) {
           add('model', res.text);
+          if (res.hud !== undefined) setHud(res.hud, res.hudEvents);
           syncMemory(finishSync);   // ตอบผู้เล่นก่อน แล้วค่อยบันทึกความจำ
         } else {
           add('model', '⚠️ ' + res.error);
@@ -266,6 +304,142 @@
     sendText(t);
   }
   sendBtn.addEventListener('click', send);
+
+  // ---------- แผง HUD (ข้อมูลมาจากเซิร์ฟเวอร์ โค้ดเป็นคนถือตัวเลขจริง) ----------
+  var hud = null;
+  var hudTab = 'overview';
+  var META_LABELS = { location: '📍 สถานที่', date: '📅 วันที่', time: '🕐 เวลา', weather: '🌤️ อากาศ', goal: '🎯 เป้าหมาย' };
+  var BAR_COLORS = { hp: '#e5484d', mp: '#3b82f6', stamina: '#22c55e', sp: '#22c55e' };
+  var BAR_PALETTE = ['#e5484d', '#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#14b8a6', '#ec4899', '#94a3b8'];
+
+  function mk(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function barColor(b, i) { return BAR_COLORS[b.key] || BAR_PALETTE[i % BAR_PALETTE.length]; }
+  function barPct(b) { return Math.max(0, Math.min(100, b.max ? (b.cur / b.max) * 100 : 0)); }
+  function findBar(h, key) { return h && h.bars.filter(function (x) { return x.key === key; })[0]; }
+
+  function setHud(newHud, events) {
+    var old = hud;
+    hud = newHud || null;
+    renderHudBar(old);
+    if (document.getElementById('hudModal').style.display === 'flex') renderHudPanel();
+    if (events && events.length) toast(events);
+  }
+
+  // แถบเล็กด้านบน: หลอดทรัพยากร + ตัวนับ + เลขเทิร์น (กดเพื่อเปิดเมนูเต็ม)
+  function renderHudBar(old) {
+    var bar = document.getElementById('hudbar');
+    bar.innerHTML = '';
+    if (!hud) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    hud.bars.forEach(function (b, i) {
+      var prev = findBar(old, b.key);
+      var box = mk('div', 'hb');
+      box.appendChild(mk('div', 'hb-t', (b.icon ? b.icon + ' ' : '') + b.label + ' ' + b.cur + '/' + b.max));
+      var track = mk('div', 'hb-track');
+      var fill = mk('div', 'hb-fill');
+      fill.style.background = barColor(b, i);
+      fill.style.width = (prev ? barPct(prev) : barPct(b)) + '%';
+      track.appendChild(fill);
+      box.appendChild(track);
+      bar.appendChild(box);
+      if (prev && prev.cur !== b.cur) {
+        box.classList.add(b.cur < prev.cur ? 'down' : 'up');
+        requestAnimationFrame(function () { fill.style.width = barPct(b) + '%'; });
+      }
+    });
+    hud.counters.forEach(function (c) { bar.appendChild(mk('div', 'hc', (c.icon ? c.icon + ' ' : '') + c.value)); });
+    bar.appendChild(mk('div', 'hc', 'T' + hud.turn));
+    bar.appendChild(mk('div', 'hmenu', '☰'));
+  }
+
+  function renderHudPanel() {
+    var tabs = document.getElementById('hudTabs');
+    var body = document.getElementById('hudBody');
+    tabs.innerHTML = '';
+    body.innerHTML = '';
+    if (!hud) {
+      body.appendChild(mk('div', 'hnote', 'ยังไม่มีข้อมูลสถานะ (เริ่มเกมและยืนยันตัวละครก่อน)'));
+      return;
+    }
+    var list = [{ key: 'overview', label: '🎮 ภาพรวม' }].concat(
+      hud.sections.map(function (s) { return { key: s.key, label: s.label }; }));
+    if (!list.some(function (t) { return t.key === hudTab; })) hudTab = 'overview';
+    list.forEach(function (t) {
+      var b = mk('button', 'htab' + (t.key === hudTab ? ' on' : ''), t.label);
+      b.addEventListener('click', function () { hudTab = t.key; renderHudPanel(); });
+      tabs.appendChild(b);
+    });
+    if (hudTab === 'overview') renderOverview(body);
+    else renderSection(body, hud.sections.filter(function (s) { return s.key === hudTab; })[0]);
+  }
+
+  function row(left, right, note) {
+    var r = mk('div', 'hrow');
+    var l = mk('div', '', left);
+    if (note) l.appendChild(mk('small', '', note));
+    r.appendChild(l);
+    if (right != null && right !== '') r.appendChild(mk('b', '', right));
+    return r;
+  }
+
+  function renderOverview(body) {
+    Object.keys(hud.meta).forEach(function (k) {
+      body.appendChild(row(META_LABELS[k] || k, hud.meta[k]));
+    });
+    hud.bars.forEach(function (b, i) {
+      var box = mk('div', 'hb hbig');
+      box.appendChild(mk('div', 'hb-t', (b.icon ? b.icon + ' ' : '') + b.label + '  ' + b.cur + ' / ' + b.max));
+      var track = mk('div', 'hb-track');
+      var fill = mk('div', 'hb-fill');
+      fill.style.background = barColor(b, i);
+      fill.style.width = barPct(b) + '%';
+      track.appendChild(fill);
+      box.appendChild(track);
+      body.appendChild(box);
+    });
+    hud.counters.forEach(function (c) {
+      body.appendChild(row((c.icon ? c.icon + ' ' : '') + c.label, String(c.value)));
+    });
+    if (hud.combat) {
+      var cb = mk('div', 'hcombat');
+      cb.textContent = '⚔️ การต่อสู้: ' + [hud.combat.enemy, hud.combat.range, hud.combat.note].filter(Boolean).join(' | ');
+      body.appendChild(cb);
+    }
+    body.appendChild(mk('div', 'hnote', 'Turn ที่เล่นแล้ว: ' + hud.turn));
+  }
+
+  function renderSection(body, sec) {
+    if (!sec) return;
+    if (!sec.items.length) { body.appendChild(mk('div', 'hnote', '(ว่าง)')); return; }
+    sec.items.forEach(function (r) {
+      if (sec.type === 'fields') body.appendChild(row(r.k, r.v));
+      else if (sec.type === 'items') body.appendChild(row(r.name, '×' + r.qty, r.note));
+      else body.appendChild(row(r.name, '', r.note));
+    });
+  }
+
+  var toastTimer = null;
+  function toast(lines) {
+    var t = document.getElementById('toast');
+    t.innerHTML = '';
+    lines.forEach(function (l) { t.appendChild(mk('div', '', l)); });
+    t.style.display = 'block';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.style.display = 'none'; }, 4500);
+  }
+
+  document.getElementById('hudbar').addEventListener('click', function () {
+    renderHudPanel();
+    document.getElementById('hudModal').style.display = 'flex';
+  });
+  document.getElementById('hudClose').addEventListener('click', function () {
+    document.getElementById('hudModal').style.display = 'none';
+  });
 
   // ปุ่มคำสั่งรวม (เป็นปุ่มเดียว แยกเป็นหลายปุ่มทีหลังได้)
   var CMDS = [
@@ -302,6 +476,7 @@
         .then(function (res) {
           if (!res.ok) { add('model', '⚠️ ' + res.error); setBusy(false); return; }
           chat.innerHTML = '';
+          setHud(null);
           add('model', preset === 'magic'
             ? 'เริ่มเกมใหม่ (โลกโรงเรียนเวทมนตร์) พิมพ์ เริ่มเกม'
             : 'เริ่มเกมใหม่ พิมพ์ เริ่มเกม แล้ว GM จะถามว่าอยากเล่นโลกแบบไหน');
