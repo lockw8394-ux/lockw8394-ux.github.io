@@ -91,12 +91,23 @@
   .srow { display: flex; gap: 6px; margin-bottom: 10px; }
   .srow button { flex: 1; text-align: center; }
   #toast { display: none; position: fixed; left: 12px; right: 12px; bottom: 78px; background: rgba(30,30,30,.96); border: 1px solid #444; border-radius: 10px; padding: 8px 12px; font-size: 13px; line-height: 1.6; z-index: 5; pointer-events: none; }
+  .chbtn.locked { background: #262626; color: #777; border: 1px dashed #444; cursor: not-allowed; }
+  .chbtn.combat-btn { background: #6b2121; }
+  .chbtn.defend-btn { background: #2d4a3e; }
+  .chbtn.rewind-btn { background: #3b3054; text-align: center; }
+  .end-card { background: linear-gradient(145deg, #1f1b3a, #171722); border: 1px solid #6366f1; border-radius: 12px; padding: 14px; margin: 10px 4% 10px 0; line-height: 1.6; }
+  .dead-card { background: linear-gradient(145deg, #3a1818, #1a1212); border: 1px solid #dc2626; border-radius: 12px; padding: 14px; margin: 10px 4% 10px 0; line-height: 1.6; }
+  .prog-wrap { background: #2b2b2b; height: 12px; border-radius: 6px; overflow: hidden; margin: 10px 0; }
+  .prog-fill { background: linear-gradient(90deg, #3b82f6, #8b5cf6); height: 100%; width: 0%; transition: width .4s ease; }
+  .cp-item { display: flex; justify-content: space-between; align-items: center; width: 100%; background: #2c2c38; color: #eee; padding: 10px 12px; margin-bottom: 6px; font-size: 13px; text-align: left; }
 </style>
 </head>
 <body>
   <div id="top">
     <span>RPG GM</span>
     <span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+      <button id="endingsbtn" style="display:none;">🏆 ฉากจบ</button>
+      <button id="rewindbtn" style="display:none;">⏪ ย้อนเวลา</button>
       <button id="setupbtn" style="display:none;">📝 ฟอร์ม</button>
       <button id="copylink">🔗 ลิงก์เซฟ</button>
       <button id="entercode">🔑 ตั้งค่า</button>
@@ -115,10 +126,59 @@
 
 <div id="modal" class="overlay">
   <div class="box">
-    <div style="margin-bottom:12px;font-size:15px;line-height:1.5;">เริ่มเกมใหม่ เลือกโลก<br><span style="font-size:12px;color:#aaa;">(บันทึกเก่าถูกเก็บไว้ในชีตอีกแท็บ ไม่ถูกลบ)</span></div>
-    <button class="choice" data-preset="magic">🏫 โรงเรียนเวทมนตร์ (แบบเดิม)</button>
-    <button class="choice" data-preset="custom">🌍 ออกแบบโลกใหม่ (AI ช่วยสร้าง)</button>
+    <div style="margin-bottom:12px;font-size:15px;line-height:1.5;">เริ่มเกมใหม่ เลือกโหมดที่ต้องการเล่น<br><span style="font-size:12px;color:#aaa;">(บันทึกเก่าถูกเก็บไว้ในชีตอีกแท็บ ไม่ถูกลบ)</span></div>
+    <button class="choice" id="openStoryStart" style="background:linear-gradient(90deg,#4f46e5,#7c3aed);font-weight:600;">⚡ โหมดเนื้อเรื่อง 0 วินาที (50+ ฉาก · 5 ฉากจบ)</button>
+    <div style="font-size:11px;color:#aaa;margin:-2px 0 10px;">AI วางเนื้อเรื่องและระบบต่อสู้ไว้ล่วงหน้าทั้งหมด กดปุ๊บเปลี่ยนฉากทันทีไม่ต้องรอโหลด</div>
+    <button class="choice" data-preset="magic">🏫 โหมดอิสระ (เดิม): โรงเรียนเวทมนตร์</button>
+    <button class="choice" data-preset="custom">🌍 โหมดอิสระ (เดิม): ออกแบบโลกใหม่</button>
     <button id="cancel">ยกเลิก</button>
+  </div>
+</div>
+
+<div id="storyStartModal" class="overlay">
+  <div class="box" style="max-width:460px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:16px;font-weight:600;">⚡ สร้างโหมดเนื้อเรื่อง (Quick Start)</span>
+      <button id="storyStartClose" style="background:#444;color:#ddd;padding:6px 12px;font-size:13px;">ปิด</button>
+    </div>
+    <div id="storyFormArea">
+      <div style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:8px;">พิมพ์สั้นๆ หรือเว้นว่างให้ AI สุ่มให้ได้เลย ระบบจะสร้างเนื้อเรื่อง 5 บท (55+ ฉาก, ระบบต่อสู้, ไอเท็มกุญแจ และ 5 ฉากจบ) ให้รวดเดียวก่อนเริ่มเล่น!</div>
+      <label>1) แนวเรื่อง / โลกที่อยากเล่น (เว้นว่าง = สุ่ม)</label>
+      <textarea id="stWorldIn" class="sf-in" rows="2" placeholder="เช่น นักสืบไซเบอร์พังก์ตามล่าองค์กรลับ / เอาชีวิตรอดในดันเจี้ยนโบราณ"></textarea>
+      <label>2) แนวตัวละครเอกของคุณ (เว้นว่าง = สุ่ม)</label>
+      <textarea id="stCharIn" class="sf-in" rows="2" placeholder="เช่น อดีตมือสังหารความจำเสื่อมชื่อ เรย์ ถนัดมีดสั้นและเวทเงา"></textarea>
+      <div class="srow" style="margin-top:8px;">
+        <button id="stGoBtn" class="choice" style="margin:0;text-align:center;background:#4f46e5;">🚀 เริ่มสร้างเนื้อเรื่องทั้งหมด</button>
+      </div>
+      <button id="stRandBtn" class="chbtn" style="width:100%;text-align:center;background:#333;">🎲 สุ่มแนวเรื่อง + ตัวละครแล้วสร้างเลย</button>
+    </div>
+    <div id="storyProgArea" style="display:none;">
+      <div id="stProgTitle" style="font-size:14px;font-weight:600;color:#c4b5fd;margin-bottom:4px;">กำลังเตรียมสร้างโลก...</div>
+      <div class="prog-wrap"><div id="stProgFill" class="prog-fill"></div></div>
+      <div id="stProgSub" style="font-size:12px;color:#aaa;line-height:1.5;white-space:pre-wrap;">ใช้เวลาประมาณ 1-2 นาที เมื่อครบ 100% จะเล่นได้ลื่นไหล 0 วินาทีตลอดทั้งเรื่อง!</div>
+      <button id="stRetryBtn" class="choice" style="display:none;margin-top:10px;text-align:center;background:#d97706;">🔄 ลองสร้างขั้นนี้อีกครั้ง</button>
+    </div>
+  </div>
+</div>
+
+<div id="rewindModal" class="overlay">
+  <div class="box" style="max-width:420px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:15px;">⏪ ย้อนเวลา / โหลดจุดเซฟ</span>
+      <button id="rewindClose" style="background:#444;color:#ddd;padding:6px 12px;font-size:13px;">ปิด</button>
+    </div>
+    <div style="font-size:12px;color:#aaa;margin-bottom:8px;">เลือกจุดตัดสินใจก่อนหน้า หรือเริ่มเล่นตัวละครเดิมใหม่ตั้งแต่ต้นเรื่อง (ฉากจบที่เคยเก็บได้แล้วจะไม่หาย)</div>
+    <div id="rewindList"></div>
+  </div>
+</div>
+
+<div id="endingsModal" class="overlay">
+  <div class="box" style="max-width:420px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-size:15px;">🏆 สมุดสะสมฉากจบ</span>
+      <button id="endingsClose" style="background:#444;color:#ddd;padding:6px 12px;font-size:13px;">ปิด</button>
+    </div>
+    <div id="endingsList"></div>
   </div>
 </div>
 
@@ -208,7 +268,6 @@
   var statusEl = document.getElementById('status');
 
   function add(role, text) {
-    // ลบปุ่มตัวเลือกของข้อความก่อนหน้า (ตอบไปแล้วหรือมีข้อความใหม่เข้ามา)
     Array.prototype.forEach.call(document.querySelectorAll('.choices'), function (e) { e.remove(); });
     var d = document.createElement('div');
     d.className = 'msg ' + role;
@@ -218,11 +277,9 @@
     chat.scrollTop = chat.scrollHeight;
   }
 
-  // ตัวเลือกล่าสุดจากเซิร์ฟเวอร์ (GM ส่งมาในบล็อก CHOICES) + ข้อความล่าสุดของ GM (ใช้เป็นตัวสำรอง)
   var curChoices = { list: [], panel: false };
   var lastModelText = '';
 
-  // ตัวสำรอง: เซฟเก่าที่ยังไม่มีตัวเลือกจากเซิร์ฟเวอร์ ให้แปลง A) B) C) ในข้อความ GM เป็นปุ่ม
   function textChoices(text) {
     var opts = [];
     String(text || '').split('\n').forEach(function (line) {
@@ -237,7 +294,6 @@
     statusEl.textContent = busy ? (label || 'กำลังคิด...') : '';
   }
 
-  // เรียก API ของ Apps Script (ส่งเป็น text/plain เพื่อไม่ให้เบราว์เซอร์ต้องทำ preflight)
   function api(action, payload) {
     if (API_URL.indexOf('https://script.google.com/') !== 0) {
       return Promise.reject(new Error('ยังไม่ได้ตั้งค่า API_URL ในไฟล์ index.html'));
@@ -257,10 +313,8 @@
   try { apiKey = localStorage.getItem('rpg_key') || ''; } catch (e) {}
   var fromLink = '';
   try { fromLink = decodeURIComponent((location.hash || '').replace(/^#/, '')); } catch (e) {}
-  if (CODE_RE.test(fromLink)) code = fromLink;   // รหัสในลิงก์มาก่อนรหัสที่จำไว้ในเบราว์เซอร์
+  if (CODE_RE.test(fromLink)) code = fromLink;
 
-  // อัปเดตความจำทำเบื้องหลัง (เซิร์ฟเวอร์สั่งเป็นรอบ ๆ ละ ~3 เทิร์น) ปุ่มส่งไม่ล็อก
-  // ถ้าผู้เล่นส่งข้อความระหว่างนั้น จะเก็บเข้าคิวแล้วส่งให้เองเมื่ออัปเดตเสร็จ (เซิร์ฟเวอร์ประมวลผลได้ทีละงานต่อผู้เล่น)
   var memBusy = false;
   var queuedText = '';
 
@@ -290,6 +344,8 @@
     }
   }
 
+  var gameMode = 'sandbox';   // 'sandbox' | 'story'
+
   // c ว่าง = สร้างผู้เล่นใหม่, มีรหัส = เล่นต่อ แล้วโหลดบทสนทนาเก่า
   function boot(c) {
     setBusy(true, 'กำลังโหลด...');
@@ -299,6 +355,14 @@
         code = res.code;
         try { localStorage.setItem('rpg_code', code); } catch (e) {}
         try { history.replaceState(null, '', '#' + code); } catch (e) {}
+
+        if (res.mode === 'story') {
+          enterStoryMode(res.storyBook, res.storySave);
+          setBusy(false);
+          return;
+        }
+
+        exitStoryModeUI();
         setHud(res.hud || null);
         chat.innerHTML = '';
         res.history.forEach(function (r) { add(r.role, r.text); });
@@ -360,6 +424,7 @@
   else askCode('ยินดีต้อนรับ ใส่ Gemini API key ของคุณ แล้วใส่รหัสผู้เล่นเดิม หรือกดสร้างผู้เล่นใหม่');
 
   function sendText(text) {
+    if (gameMode === 'story') { handleStoryFreeText(text); return; }
     text = String(text || '').trim();
     if (!text || sendBtn.disabled) return;
     if (memBusy) {                       // กำลังบันทึกความจำอยู่ รอคิวแล้วส่งให้เอง
@@ -427,7 +492,6 @@
     if (events && events.length) toast(events);
   }
 
-  // ---------- แถบศัตรูตอนต่อสู้: หลอดสภาพ (ไม่โชว์ตัวเลข) + debuff ตามส่วน แสดงเฉพาะเป้าหมายที่เล็ง ----------
   function enemyPct(c) { return Math.max(0, Math.min(100, c && c.hp != null ? c.hp : 100)); }
   function enemyColor(p) { return p > 60 ? '#22c55e' : (p > 30 ? '#f59e0b' : '#e5484d'); }
 
@@ -460,7 +524,6 @@
     }
   }
 
-  // แถบเล็กด้านบน: หลอดทรัพยากร + ตัวนับ + เลขเทิร์น (กดเพื่อเปิดเมนูเต็ม)
   function renderHudBar(old) {
     var bar = document.getElementById('hudbar');
     bar.innerHTML = '';
@@ -546,9 +609,6 @@
     body.appendChild(mk('div', 'hnote', 'Turn ที่เล่นแล้ว: ' + hud.turn));
   }
 
-  // ---------- สกิล: แสดงในเมนู ----------
-  // สถานะแสดงเฉพาะ "กำลังฝึก" (สกิลที่ปลดล็อกแล้วแสดงเป็น Lv) ไม่แสดงแหล่งที่มา (แสดงเฉพาะในกล่องแจ้งเตือนตอนได้)
-  // ความเสี่ยงแสดงเฉพาะสกิลที่ GM ใส่ไว้ (อันตรายจริง)
   function skillLines(r) {
     var L = [];
     if (r.kind) L.push(r.kind);
@@ -604,7 +664,6 @@
     document.getElementById('hudModal').style.display = 'none';
   });
 
-  // ปุ่มคำสั่งรวม (เป็นปุ่มเดียว แยกเป็นหลายปุ่มทีหลังได้)
   var CMDS = [
     ['/status', 'สถานะ'], ['/character', 'ตัวละคร'], ['/inventory', 'ของ'], ['/skills', 'สกิล'],
     ['/spells', 'เวท'], ['/relations', 'ความสัมพันธ์'], ['/quests', 'เควสต์'], ['/goal', 'เป้าหมาย'],
@@ -618,7 +677,7 @@
     b.textContent = c[0] + ' ' + c[1];
     b.addEventListener('click', function () {
       cmdModal.style.display = 'none';
-      if (c[0] === '/ooc') { input.value = '/ooc '; input.focus(); }   // /ooc ต้องพิมพ์ข้อความต่อเอง
+      if (c[0] === '/ooc') { input.value = '/ooc '; input.focus(); }
       else sendText(c[0]);
     });
     cmdGrid.appendChild(b);
@@ -639,6 +698,7 @@
         .then(function (res) {
           if (!res.ok) { add('model', '⚠️ ' + res.error); setBusy(false); return; }
           chat.innerHTML = '';
+          exitStoryModeUI();
           setHud(null);
           setup.fields = [];
           curChoices = { list: [], panel: false };
@@ -653,7 +713,7 @@
     });
   });
 
-  // ---------- ฟอร์มออกแบบโลก / สร้างตัวละคร (AI ร่างให้ก่อน แก้ได้ เพิ่มช่องได้ แล้วกดยืนยัน) ----------
+  // ---------- ฟอร์มออกแบบโลก & สร้างตัวละคร ----------
   var setup = { kind: null, fields: [], stage: 'playing', busy: false };
   var setupModal = document.getElementById('setupModal');
 
@@ -684,7 +744,6 @@
     if (b) setupMsg(label || 'กำลังทำงาน...');
   }
 
-  // stage: 'world' | 'character' | 'playing'
   function applyStage(stage, autoOpen) {
     setup.stage = stage || 'playing';
     document.getElementById('setupbtn').style.display = setup.stage === 'playing' ? 'none' : '';
@@ -692,7 +751,6 @@
     if (autoOpen) openSetup(false);
   }
 
-  // keep = true: เปิดฟอร์มเดิมที่ค้างไว้ (ไม่ร่างใหม่)
   function openSetup(keep) {
     var kind = setup.stage === 'world' ? 'world' : 'char';
     var same = keep && setup.kind === kind && setup.fields.length;
@@ -711,7 +769,7 @@
     setup.fields = [];
     document.getElementById('setupConcept').value = '';
     renderSetupForm();
-    if (kind === 'char') runDraft({});    // ตัวละคร: AI ร่างให้ทันทีตอนเปิด
+    if (kind === 'char') runDraft({});
   }
 
   function serializeFields() {
@@ -798,7 +856,6 @@
     });
   }
 
-  // opts: { concept, only, fresh }
   function runDraft(opts) {
     if (setup.busy) return;
     var concept = opts.concept != null ? opts.concept : document.getElementById('setupConcept').value.trim();
@@ -836,7 +893,7 @@
           setSetupBusy(false);
           if (!res.ok) { setupMsg('⚠️ ' + res.error); return; }
           setup.fields = [];
-          applyStage(res.stage, true);     // ไปขั้นสร้างตัวละคร
+          applyStage(res.stage, true);
         })
         .catch(function (err) { setSetupBusy(false); setupMsg('⚠️ ' + err.message); });
       return;
@@ -861,9 +918,7 @@
       .catch(function (err) { setSetupBusy(false); setupMsg('⚠️ ' + err.message); });
   }
 
-  // ---------- ปุ่มตัวเลือก + ปุ่มใช้สกิล/ไอเท็ม ----------
-  // รายการที่ "กดใช้ได้" มาจากแผงสถานะ (hud): ไอเท็มจากเมนู inventory, สกิล/เวทจากเมนูที่ GM ใส่ usable:true
-  // เซฟเก่าที่ไม่มี flag usable เดาจากชื่อเมนู (สกิล เวท พลัง วิชา skill spell magic ability power)
+  // ---------- ปุ่มตัวเลือก & แผงใช้สกิล/ไอเท็ม ----------
   var USABLE_GUESS = /skill|spell|magic|abilit|power|สกิล|เวท|พลัง|วิชา/i;
 
   function usableLists() {
@@ -874,7 +929,7 @@
         s.items.forEach(function (r) { items.push({ name: r.name, qty: r.qty, note: r.note || '' }); });
         return;
       }
-      if (s.type === 'skills') {                       // สกิลที่ระบบจัดการ: กำลังฝึกก็ลองใช้ได้
+      if (s.type === 'skills') {
         s.items.forEach(function (r) {
           var note = (r.status === 'training' ? 'กำลังฝึก ' + r.progress + '%' : 'Lv' + r.level) + (r.cost ? ' · ' + r.cost : '');
           skills.push({ name: r.name, note: note });
@@ -945,6 +1000,12 @@
   }
 
   function useEntry(name) {
+    if (gameMode === 'story') {
+      useModal.style.display = 'none';
+      document.getElementById('useTarget').value = '';
+      storyUseSkillOrItem(useKind, name);
+      return;
+    }
     var target = document.getElementById('useTarget').value.trim();
     var text = (useKind === 'skill' ? 'ใช้ ' : 'ใช้ไอเท็ม ') + name + (target ? ' กับ ' + target : '');
     useModal.style.display = 'none';
@@ -1017,6 +1078,904 @@
       })
       .catch(function (err) { setSetupBusy(false); setupMsg('⚠️ ' + err.message); });
   });
+
+  // =========================================================================
+  // ⚡ STORY MODE ENGINE (0-Second Pre-generated Gamebook + Instant Combat)
+  // =========================================================================
+  var storyBook = null;
+  var storySave = null;
+  var storyGenState = { step: 0, world: '', char: '', chaptersMeta: [] };
+  var storySyncTimer = null;
+
+  function cloneObj(o) { return JSON.parse(JSON.stringify(o)); }
+  function localStoryKey() { return 'rpg_story_save_' + code; }
+
+  function persistStoryLocal() {
+    if (!code || !storySave) return;
+    try { localStorage.setItem(localStoryKey(), JSON.stringify(storySave)); } catch (e) {}
+  }
+
+  function syncStoryServer(immediate) {
+    persistStoryLocal();
+    clearTimeout(storySyncTimer);
+    var run = function () {
+      if (!storySave || gameMode !== 'story') return;
+      api('story_save', { code: code, save: storySave }).catch(function () {});
+    };
+    if (immediate) run();
+    else storySyncTimer = setTimeout(run, 1200);
+  }
+
+  function setBarVisibility(showInput, placeholderText) {
+    document.getElementById('bar').style.display = showInput ? 'flex' : 'none';
+    document.getElementById('cmdbtn').style.display = gameMode === 'story' ? 'none' : '';
+    if (placeholderText) input.placeholder = placeholderText;
+    else if (gameMode !== 'story') input.placeholder = 'พิมพ์การกระทำเอง หรือกดตัวเลือกด้านบน';
+  }
+
+  function exitStoryModeUI() {
+    gameMode = 'sandbox';
+    storyBook = null;
+    storySave = null;
+    document.getElementById('endingsbtn').style.display = 'none';
+    document.getElementById('rewindbtn').style.display = 'none';
+    setBarVisibility(true);
+  }
+
+  function updateEndingsBtnLabel() {
+    var btn = document.getElementById('endingsbtn');
+    if (gameMode !== 'story' || !storyBook) { btn.style.display = 'none'; return; }
+    var unlocked = (storySave && storySave.unlockedEndings) ? storySave.unlockedEndings.length : 0;
+    var total = (storyBook.endings && storyBook.endings.length) ? storyBook.endings.length : 5;
+    btn.textContent = '🏆 ฉากจบ ' + unlocked + '/' + total;
+    btn.style.display = '';
+    document.getElementById('rewindbtn').style.display = '';
+  }
+
+  var storyStartModal = document.getElementById('storyStartModal');
+  document.getElementById('openStoryStart').addEventListener('click', function () {
+    modal.style.display = 'none';
+    openStoryCreator();
+  });
+  document.getElementById('storyStartClose').addEventListener('click', function () {
+    if (storyGenState.busy) return;
+    storyStartModal.style.display = 'none';
+  });
+
+  function openStoryCreator() {
+    document.getElementById('storyFormArea').style.display = 'block';
+    document.getElementById('storyProgArea').style.display = 'none';
+    document.getElementById('stRetryBtn').style.display = 'none';
+    storyStartModal.style.display = 'flex';
+  }
+
+  document.getElementById('stGoBtn').addEventListener('click', function () {
+    startStoryGeneration(document.getElementById('stWorldIn').value.trim(), document.getElementById('stCharIn').value.trim());
+  });
+  document.getElementById('stRandBtn').addEventListener('click', function () {
+    startStoryGeneration('สุ่มโลกผจญภัยสุดเข้มข้นหักมุมน่าติดตาม', 'สุ่มตัวละครเอกที่มีความสามารถโดดเด่น');
+  });
+  document.getElementById('stRetryBtn').addEventListener('click', function () {
+    document.getElementById('stRetryBtn').style.display = 'none';
+    runStoryGenStep();
+  });
+
+  function setStoryProg(pct, title, sub) {
+    document.getElementById('stProgFill').style.width = pct + '%';
+    if (title) document.getElementById('stProgTitle').textContent = title;
+    if (sub) document.getElementById('stProgSub').textContent = sub;
+  }
+
+  function startStoryGeneration(wConcept, cConcept) {
+    if (!apiKey) { storyStartModal.style.display = 'none'; askCode('⚠️ กรุณาใส่ Gemini API key ก่อนสร้างเนื้อเรื่อง'); return; }
+    storyGenState = { step: 0, world: wConcept, char: cConcept, chaptersMeta: [], busy: true };
+    document.getElementById('storyFormArea').style.display = 'none';
+    document.getElementById('storyProgArea').style.display = 'block';
+    document.getElementById('storyStartClose').style.display = 'none';
+    runStoryGenStep();
+  }
+
+  function runStoryGenStep() {
+    storyGenState.busy = true;
+    if (storyGenState.step === 0) {
+      setStoryProg(8, '📐 ขั้นที่ 1/6: กำลังวางโครงเรื่องใหญ่ ตัวละคร และ 5 ฉากจบ...', 'AI กำลังออกแบบโลก ไอเท็มกุญแจ และเส้นทางแยกทั้งหมด...');
+      api('story_init', { code: code, key: apiKey, worldConcept: storyGenState.world, charConcept: storyGenState.char })
+        .then(function (res) {
+          if (!res.ok) throw new Error(res.error);
+          storyGenState.chaptersMeta = res.chapters || [];
+          storyGenState.title = res.title || '';
+          storyGenState.step = 1;
+          runStoryGenStep();
+        })
+        .catch(onStoryGenError);
+      return;
+    }
+
+    var ch = storyGenState.step;
+    var chInfo = storyGenState.chaptersMeta[ch - 1];
+    var chTitle = chInfo ? chInfo.title : ('บทที่ ' + ch);
+    var pct = 15 + Math.round(((ch - 1) / 5) * 80);
+    setStoryProg(pct, '📖 ขั้นที่ ' + (ch + 1) + '/6: กำลังเขียนเนื้อเรื่องบทที่ ' + ch + '/5 — "' + chTitle + '"',
+      'เรื่อง: ' + (storyGenState.title || '-') + '\nกำลังสร้างฉาก ทางแยก ศัตรู และไอเท็มของบทที่ ' + ch + '...');
+
+    api('story_chap', { code: code, key: apiKey, chapter: ch })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.error);
+        if (res.done && res.storyBook) {
+          setStoryProg(100, '✅ สร้างเนื้อเรื่องครบ 100% พร้อมเข้าเล่น!', 'เข้าสู่โลก "' + res.storyBook.title + '" ทันที...');
+          storyGenState.busy = false;
+          document.getElementById('storyStartClose').style.display = '';
+          try { localStorage.removeItem(localStoryKey()); } catch (e) {}
+          setTimeout(function () {
+            storyStartModal.style.display = 'none';
+            enterStoryMode(res.storyBook, res.storySave);
+          }, 500);
+        } else {
+          storyGenState.step = ch + 1;
+          runStoryGenStep();
+        }
+      })
+      .catch(onStoryGenError);
+  }
+
+  function onStoryGenError(err) {
+    storyGenState.busy = false;
+    document.getElementById('storyStartClose').style.display = '';
+    document.getElementById('stProgSub').textContent = '⚠️ เกิดข้อผิดพลาด: ' + err.message + '\nกดปุ่มด้านล่างเพื่อลองสร้างขั้นนี้ต่อได้เลย (ข้อมูลบทก่อนหน้าไม่หาย)';
+    document.getElementById('stRetryBtn').style.display = 'block';
+  }
+
+  function enterStoryMode(book, serverSave) {
+    gameMode = 'story';
+    setupModal.style.display = 'none';
+    document.getElementById('setupbtn').style.display = 'none';
+
+    if (!book || !book.nodes || Object.keys(book.nodes).length === 0 || book.chapters_ready < (book.chapters_total || 5)) {
+      chat.innerHTML = '';
+      add('model', '⚠️ เนื้อเรื่องของเซฟนี้ยังสร้างไม่ครบ 5 บท กดปุ่ม "เริ่มเกมใหม่" เพื่อสร้างโหมดเนื้อเรื่องใหม่ได้เลยครับ');
+      openStoryCreator();
+      return;
+    }
+
+    storyBook = book;
+    var localSv = null;
+    try {
+      var rawLocal = localStorage.getItem(localStoryKey());
+      if (rawLocal) localSv = JSON.parse(rawLocal);
+    } catch (e) {}
+
+    if (localSv && serverSave && (localSv.turn || 0) > (serverSave.turn || 0) && book.nodes[localSv.currentNode]) {
+      storySave = localSv;
+      if (serverSave.unlockedEndings) {
+        serverSave.unlockedEndings.forEach(function (eid) {
+          if (storySave.unlockedEndings.indexOf(eid) < 0) storySave.unlockedEndings.push(eid);
+        });
+      }
+    } else if (serverSave && book.nodes[serverSave.currentNode]) {
+      storySave = serverSave;
+    } else {
+      storySave = {
+        currentNode: book.start_node,
+        turn: 1,
+        hud: cloneObj(book.initial_hud),
+        combatState: null,
+        dead: false,
+        unlockedEndings: [],
+        checkpoints: [],
+        historyLog: []
+      };
+    }
+
+    chat.innerHTML = '';
+    add('model', '📖 ' + storyBook.title + '\n' + (storyBook.world_summary || ''));
+    setHud(storySave.hud);
+    updateEndingsBtnLabel();
+    renderStoryNode(storySave.currentNode, true);
+  }
+
+  function getInvSection(h) { return h.sections.filter(function (s) { return s.key === 'inventory'; })[0]; }
+  function getSkillSection(h) { return h.sections.filter(function (s) { return s.key === 'skills'; })[0]; }
+
+  function hasStoryItem(itemName) {
+    if (!storySave || !storySave.hud || !itemName) return false;
+    var inv = getInvSection(storySave.hud);
+    if (!inv) return false;
+    var target = itemName.trim().toLowerCase();
+    return inv.items.some(function (it) { return it.name.trim().toLowerCase() === target && it.qty > 0; });
+  }
+
+  function getStoryMoney() {
+    if (!storySave || !storySave.hud) return 0;
+    var c = storySave.hud.counters.filter(function (x) { return x.key === 'money'; })[0] || storySave.hud.counters[0];
+    return c ? c.value : 0;
+  }
+
+  function addStoryMoney(delta, events) {
+    var h = storySave.hud;
+    var c = h.counters.filter(function (x) { return x.key === 'money'; })[0] || h.counters[0];
+    if (!c || !delta) return;
+    c.value = Math.max(0, c.value + delta);
+    events.push((c.icon || '💰') + ' ' + c.label + ' ' + (delta > 0 ? '+' : '') + delta + ' (' + c.value + ')');
+  }
+
+  function changeStoryBar(key, delta, events) {
+    var h = storySave.hud;
+    var b = h.bars.filter(function (x) { return x.key === key; })[0];
+    if (!b && key === 'mp' && h.bars[1]) b = h.bars[1];
+    if (!b || !delta) return 0;
+    var before = b.cur;
+    b.cur = Math.max(0, Math.min(b.max, b.cur + Math.round(delta)));
+    var real = b.cur - before;
+    if (real !== 0 && events) {
+      events.push((b.icon || '') + ' ' + b.label + ' ' + (real > 0 ? '+' : '') + real + ' (' + b.cur + '/' + b.max + ')');
+    }
+    return real;
+  }
+
+  function addStoryItem(itemObj, events) {
+    var inv = getInvSection(storySave.hud);
+    if (!inv || !itemObj || !itemObj.name) return;
+    var q = Math.max(1, Math.round(Number(itemObj.qty) || 1));
+    var key = itemObj.name.trim().toLowerCase();
+    var ex = inv.items.filter(function (x) { return x.name.trim().toLowerCase() === key; })[0];
+    if (ex) {
+      ex.qty += q;
+      if (itemObj.note && !ex.note) ex.note = itemObj.note;
+    } else {
+      inv.items.push({ name: itemObj.name.trim(), qty: q, note: itemObj.note || '' });
+    }
+    if (events) events.push('🎒 +' + itemObj.name.trim() + ' ×' + q);
+  }
+
+  function removeStoryItem(name, qty, events) {
+    var inv = getInvSection(storySave.hud);
+    if (!inv || !name) return false;
+    var q = Math.max(1, Math.round(Number(qty) || 1));
+    var key = name.trim().toLowerCase();
+    for (var i = 0; i < inv.items.length; i++) {
+      if (inv.items[i].name.trim().toLowerCase() === key) {
+        if (inv.items[i].qty <= q) inv.items.splice(i, 1);
+        else inv.items[i].qty -= q;
+        if (events) events.push('🎒 −' + name.trim() + ' ×' + q);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function applyNodeEffects(node) {
+    var ef = node && node.effects;
+    var events = [];
+    var popups = [];
+    var h = storySave.hud;
+    if (node.location) h.meta.location = node.location;
+    if (node.time) h.meta.time = node.time;
+    h.turn = storySave.turn;
+
+    if (!ef || typeof ef !== 'object') return { events: events, popups: popups };
+    if (ef.hp) changeStoryBar('hp', Number(ef.hp), events);
+    if (ef.mp) changeStoryBar('mp', Number(ef.mp), events);
+    if (ef.money) addStoryMoney(Number(ef.money), events);
+
+    (ef.items_add || []).forEach(function (it) {
+      if (typeof it === 'string') it = { name: it, qty: 1, note: '' };
+      addStoryItem(it, events);
+    });
+    (ef.items_remove || []).forEach(function (it) {
+      var nm = typeof it === 'string' ? it : (it && it.name);
+      var qt = (it && it.qty) ? it.qty : 1;
+      removeStoryItem(nm, qt, events);
+    });
+    (ef.skills_add || []).forEach(function (sk) {
+      if (!sk || !sk.name) return;
+      var sec = getSkillSection(h);
+      if (!sec) return;
+      if (sec.items.some(function (x) { return x.name.trim().toLowerCase() === sk.name.trim().toLowerCase(); })) return;
+      var newSk = {
+        name: sk.name,
+        kind: sk.kind || 'สกิล',
+        level: 1,
+        progress: 0,
+        status: 'unlocked',
+        cost: sk.cost || 'MP 10',
+        limit: sk.limit || '',
+        risk: sk.risk || '',
+        note: sk.note || '[power:34]'
+      };
+      sec.items.push(newSk);
+      events.push('✨ ได้รับสกิลใหม่: ' + newSk.name);
+      popups.push({ type: 'gain', skill: newSk, reason: 'ปลดล็อกจากเหตุการณ์ในเนื้อเรื่อง', source: node.title || '' });
+    });
+    (ef.clues_add || []).forEach(function (cl) {
+      var cSec = h.sections.filter(function (s) { return s.key === 'clues'; })[0];
+      if (!cSec) return;
+      var txt = typeof cl === 'string' ? cl : (cl && cl.name);
+      if (txt && !cSec.items.some(function (x) { return x.name === txt; })) {
+        cSec.items.push({ name: txt, note: '' });
+        events.push('📌 เบาะแสใหม่: ' + txt);
+      }
+    });
+    return { events: events, popups: popups };
+  }
+
+  function saveCheckpoint(label) {
+    if (!storySave || storySave.dead) return;
+    var snap = {
+      label: label || ('Turn ' + storySave.turn + ' — ' + ((storyBook.nodes[storySave.currentNode] && storyBook.nodes[storySave.currentNode].title) || storySave.currentNode)),
+      nodeId: storySave.currentNode,
+      turn: storySave.turn,
+      hud: cloneObj(storySave.hud)
+    };
+    snap.hud.combat = null;
+    storySave.checkpoints = (storySave.checkpoints || []).filter(function (c) { return c.nodeId !== snap.nodeId; });
+    storySave.checkpoints.push(snap);
+    if (storySave.checkpoints.length > 12) storySave.checkpoints.shift();
+  }
+
+  function renderStoryNode(nodeId, isReload) {
+    var node = storyBook.nodes[nodeId];
+    if (!node) {
+      add('model', '⚠️ ไม่พบข้อมูลฉาก (' + nodeId + ') คุณสามารถกดปุ่ม ⏪ ย้อนเวลา เพื่อกลับไปยังฉากก่อนหน้าได้');
+      return;
+    }
+
+    storySave.currentNode = nodeId;
+    var evOut = isReload ? { events: [], popups: [] } : applyNodeEffects(node);
+
+    var header = '🔢 Turn: ' + storySave.turn + (node.chapter ? ' · บทที่ ' + node.chapter : '') +
+      (node.title ? ' — ' + node.title : '');
+    var locLine = [node.location ? '📍 ' + node.location : '', node.time ? '🕐 ' + node.time : ''].filter(Boolean).join('  |  ');
+    add('model', header + (locLine ? '\n' + locLine : '') + '\n\n' + node.text);
+
+    var hpBar = findBar(storySave.hud, 'hp');
+    if (hpBar && hpBar.cur <= 0) storySave.dead = true;
+
+    if (storySave.dead) {
+      storySave.hud.combat = null;
+      setHud(storySave.hud, evOut.events);
+      renderDeathScreen('พลังชีวิต (HP) ของคุณลดลงเหลือ 0');
+      syncStoryServer(true);
+      return;
+    }
+
+    if (node.type === 'ending') {
+      storySave.hud.combat = null;
+      if (storySave.unlockedEndings.indexOf(node.id) < 0) storySave.unlockedEndings.push(node.id);
+      setHud(storySave.hud, evOut.events);
+      updateEndingsBtnLabel();
+      setBarVisibility(false);
+      renderEndingCard(node);
+      syncStoryServer(true);
+      return;
+    }
+
+    if (node.type === 'combat' && node.combat) {
+      if (!isReload || !storySave.combatState || storySave.combatState.nodeId !== node.id) {
+        saveCheckpoint('ก่อนปะทะ: ' + node.combat.enemy);
+        var scale = node.combat.max_hp_scale || 100;
+        storySave.combatState = {
+          nodeId: node.id,
+          enemy: node.combat.enemy,
+          group: !!node.combat.group,
+          tough: node.combat.tough || 'ฝึกมา',
+          curHp: scale,
+          maxHp: scale,
+          atkDc: node.combat.atk_dc || 12,
+          enemyDmg: node.combat.enemy_dmg || 14,
+          moves: node.combat.enemy_moves || ['พุ่งเข้าโจมตีอย่างจัง'],
+          partPool: node.combat.part_debuffs || ['เสียจังหวะชั่วคราว'],
+          debuffs: [],
+          defending: false,
+          canFlee: !!node.combat.can_flee,
+          winNext: node.combat.win_next,
+          fleeNext: node.combat.flee_next
+        };
+      }
+      syncCombatHudBar();
+      setHud(storySave.hud, evOut.events);
+      showSkillPopups(evOut.popups);
+      setBarVisibility(false);
+      renderStoryCombatButtons();
+      syncStoryServer(false);
+      return;
+    }
+
+    storySave.hud.combat = null;
+    setHud(storySave.hud, evOut.events);
+    showSkillPopups(evOut.popups);
+
+    if (node.type === 'input') {
+      saveCheckpoint('จุดตัดสินใจ: ' + (node.title || 'พิมพ์คำตอบ'));
+      add('model', '💬 จุดสำคัญ: ' + (node.input_prompt || 'พิมพ์คำพูดหรือการกระทำของคุณด้านล่าง'));
+      setBarVisibility(true, 'พิมพ์คำพูดหรือการกระทำของคุณที่นี่ แล้วกดส่ง...');
+      renderStoryChoiceButtons(node.choices || [], true);
+      syncStoryServer(false);
+      return;
+    }
+
+    setBarVisibility(false);
+    renderStoryChoiceButtons(node.choices || [], false);
+    syncStoryServer(false);
+  }
+
+  function renderStoryChoiceButtons(choices, allowEmpty) {
+    Array.prototype.forEach.call(document.querySelectorAll('.choices'), function (e) { e.remove(); });
+    var u = usableLists();
+    var healItems = u.items.filter(function (it) { return /\[usable:|ฟื้นฟู|ยา/i.test(it.name + ' ' + it.note); });
+    if (!choices.length && !healItems.length && allowEmpty) return;
+
+    var box = mk('div', 'choices');
+    choices.forEach(function (ch) {
+      var missingItem = ch.req_item && !hasStoryItem(ch.req_item);
+      var missingMoney = ch.req_money && getStoryMoney() < ch.req_money;
+      var locked = missingItem || missingMoney;
+
+      var label = ch.text;
+      if (ch.req_item) label = (missingItem ? '🔒 ' : '🔑 ') + label + ' (' + (missingItem ? 'ต้องมี: ' : 'ใช้: ') + ch.req_item + ')';
+      if (ch.req_money) label = (missingMoney ? '🔒 ' : '💰 ') + label + ' (ใช้เงิน ' + ch.req_money + ')';
+
+      var b = mk('button', 'chbtn' + (locked ? ' locked' : ''), label);
+      if (locked) b.disabled = true;
+      else b.addEventListener('click', function () { chooseStoryOption(ch); });
+      box.appendChild(b);
+    });
+
+    if (u.items.length) {
+      var bi = mk('button', 'chbtn chuse', '🎒 ใช้ไอเท็มในกระเป๋า (' + u.items.length + ')');
+      bi.addEventListener('click', function () { openUse('item'); });
+      box.appendChild(bi);
+    }
+    chat.appendChild(box);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function chooseStoryOption(ch) {
+    saveCheckpoint();
+    var ev = [];
+    if (ch.req_item && ch.consume_item) removeStoryItem(ch.req_item, 1, ev);
+    if (ch.req_money) addStoryMoney(-ch.req_money, ev);
+    add('user', ch.text);
+    if (ev.length) toast(ev);
+    storySave.turn += 1;
+    renderStoryNode(ch.next, false);
+  }
+
+  function handleStoryFreeText(text) {
+    text = String(text || '').trim();
+    if (!text || sendBtn.disabled) return;
+    var node = storyBook && storyBook.nodes[storySave.currentNode];
+    if (!node || node.type !== 'input') return;
+
+    saveCheckpoint();
+    add('user', text);
+    setBusy(true, 'กำลังประเมินผลคำตอบของคุณ...');
+    api('story_input', { code: code, key: apiKey, nodeId: node.id, text: text })
+      .then(function (res) {
+        setBusy(false);
+        if (!res.ok) { add('model', '⚠️ ' + res.error); return; }
+        if (res.transition) add('model', '✨ ' + res.transition);
+        storySave.turn += 1;
+        renderStoryNode(res.next, false);
+      })
+      .catch(function (err) { setBusy(false); add('model', '⚠️ ' + err.message); });
+  }
+
+  function getStatBonus(keywordRegex) {
+    if (!storySave || !storySave.hud) return 1;
+    var st = storySave.hud.sections.filter(function (s) { return s.key === 'stats'; })[0];
+    if (!st) return 1;
+    for (var i = 0; i < st.items.length; i++) {
+      if (keywordRegex.test(st.items[i].k)) {
+        var n = parseInt(String(st.items[i].v).replace(/[^\-\d]/g, ''), 10);
+        if (isFinite(n)) return n;
+      }
+    }
+    return 1;
+  }
+
+  function syncCombatHudBar() {
+    var cs = storySave.combatState;
+    if (!cs) { storySave.hud.combat = null; return; }
+    var pct = Math.max(0, Math.min(100, Math.round((cs.curHp / cs.maxHp) * 100)));
+    storySave.hud.combat = {
+      enemy: cs.enemy,
+      group: cs.group,
+      tough: cs.tough,
+      hp: pct,
+      range: 'ระยะปะทะ',
+      note: 'ความทนทาน: ' + cs.tough,
+      debuffs: cs.debuffs.map(function (d) { return { part: '', text: d }; })
+    };
+  }
+
+  function renderStoryCombatButtons() {
+    Array.prototype.forEach.call(document.querySelectorAll('.choices'), function (e) { e.remove(); });
+    var cs = storySave.combatState;
+    if (!cs) return;
+    var u = usableLists();
+    var box = mk('div', 'choices');
+
+    var bAtk = mk('button', 'chbtn combat-btn', '⚔️ โจมตีปกติ (ทอย D30 ปะทะ ' + cs.enemy + ')');
+    bAtk.addEventListener('click', function () { executeCombatTurn({ kind: 'attack' }); });
+    box.appendChild(bAtk);
+
+    if (u.skills.length) {
+      var bSk = mk('button', 'chbtn chuse', '✨ ใช้สกิล / ท่าไม้ตาย (' + u.skills.length + ')');
+      bSk.addEventListener('click', function () { openUse('skill'); });
+      box.appendChild(bSk);
+    }
+    if (u.items.length) {
+      var bIt = mk('button', 'chbtn chuse', '🎒 ใช้ไอเท็ม (' + u.items.length + ')');
+      bIt.addEventListener('click', function () { openUse('item'); });
+      box.appendChild(bIt);
+    }
+
+    var bDef = mk('button', 'chbtn defend-btn', '🛡️ ตั้งรับเต็มกำลัง (ลดดาเมจเทิร์นนี้ 60% + ฟื้นพลังเล็กน้อย)');
+    bDef.addEventListener('click', function () { executeCombatTurn({ kind: 'defend' }); });
+    box.appendChild(bDef);
+
+    if (cs.canFlee && cs.fleeNext) {
+      var bFlee = mk('button', 'chbtn', '🏃 หาจังหวะหลบหนี (เช็คไหวพริบ D30)');
+      bFlee.addEventListener('click', function () { executeCombatTurn({ kind: 'flee' }); });
+      box.appendChild(bFlee);
+    }
+
+    chat.appendChild(box);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function storyUseSkillOrItem(kind, name) {
+    if (storySave.combatState) {
+      executeCombatTurn({ kind: kind, name: name });
+      return;
+    }
+    var inv = getInvSection(storySave.hud);
+    if (!inv) return;
+    var it = inv.items.filter(function (x) { return x.name === name; })[0];
+    if (!it) return;
+    var note = it.note || '';
+    var ev = [];
+    var mHp = note.match(/\[usable:hp:(\d+)\]/i);
+    var mMp = note.match(/\[usable:mp:(\d+)\]/i);
+    if (mHp) {
+      changeStoryBar('hp', Number(mHp[1]), ev);
+      removeStoryItem(name, 1, ev);
+    } else if (mMp) {
+      changeStoryBar('mp', Number(mMp[1]), ev);
+      removeStoryItem(name, 1, ev);
+    } else if (/ยา|ฟื้น|อาหาร|น้ำ/i.test(it.name + ' ' + note)) {
+      changeStoryBar('hp', 30, ev);
+      removeStoryItem(name, 1, ev);
+    } else {
+      toast(['📌 "' + name + '" เป็นไอเท็มสำคัญ/เนื้อเรื่อง เก็บไว้ใช้เมื่อเจอตัวเลือกที่ตรงกัน']);
+      return;
+    }
+    setHud(storySave.hud, ev);
+    renderStoryChoiceButtons((storyBook.nodes[storySave.currentNode] && storyBook.nodes[storySave.currentNode].choices) || [], false);
+    syncStoryServer(false);
+  }
+
+  function executeCombatTurn(act) {
+    var cs = storySave.combatState;
+    if (!cs) return;
+    var logs = [];
+    var events = [];
+    var atkMod = getStatBonus(/โจมตี|ร่างกาย|กำลัง|แม่น|เวท|body|atk/i);
+    var defMod = getStatBonus(/ป้องกัน|อดทน|ไหวพริบ|เร็ว|def|agi/i);
+    var roll = Math.floor(Math.random() * 30) + 1;
+
+    if (act.kind === 'attack') {
+      add('user', '⚔️ โจมตีใส่ ' + cs.enemy);
+      var total = roll + atkMod;
+      var dc = cs.atkDc - (cs.debuffs.length * 1);
+      logs.push('🎲 ทอย D30: ' + roll + ' + โบนัส ' + atkMod + ' = ' + total + ' (DC ' + dc + ')');
+      if (roll === 30 || total >= dc + 8) {
+        var critDmg = 28 + Math.max(0, atkMod * 4);
+        cs.curHp = Math.max(0, cs.curHp - critDmg);
+        logs.push('💥 โจมตีเข้าจุดสำคัญเต็มแรง! ' + cs.enemy + ' เสียหลักอย่างหนัก!');
+        if (cs.partPool.length && cs.debuffs.length < 3) {
+          var db = cs.partPool[cs.debuffs.length % cs.partPool.length];
+          if (cs.debuffs.indexOf(db) < 0) { cs.debuffs.push(db); events.push('⚔️ ' + cs.enemy + ': ' + db); }
+        }
+      } else if (roll > 1 && total >= dc) {
+        var dmg = 18 + Math.max(0, atkMod * 3);
+        cs.curHp = Math.max(0, cs.curHp - dmg);
+        logs.push('✅ การโจมตีเข้าเป้า! สร้างความเสียหายแก่ ' + cs.enemy);
+      } else {
+        logs.push('💨 ' + cs.enemy + ' เบี่ยงตัวหลบการโจมตีของคุณได้!');
+      }
+    } else if (act.kind === 'skill') {
+      var skSec = getSkillSection(storySave.hud);
+      var sk = skSec && skSec.items.filter(function (x) { return x.name === act.name; })[0];
+      if (!sk) return;
+      var costNum = 0;
+      var cm = String(sk.cost || '').match(/(\d+)/);
+      if (cm) costNum = Number(cm[1]);
+      var mpBar = storySave.hud.bars[1] || findBar(storySave.hud, 'mp');
+      if (mpBar && costNum > 0 && mpBar.cur < costNum) {
+        toast(['⚠️ ' + mpBar.label + ' ไม่พอใช้สกิลนี้ (ต้องการ ' + costNum + ')']);
+        return;
+      }
+      if (mpBar && costNum > 0) changeStoryBar(mpBar.key, -costNum, events);
+      add('user', '✨ ใช้สกิล: ' + sk.name);
+
+      var healMatch = String(sk.note || '').match(/\[heal:(\d+)\]/i);
+      if (healMatch) {
+        var hAmt = Number(healMatch[1]) + (sk.level - 1) * 5;
+        changeStoryBar('hp', hAmt, events);
+        logs.push('💚 ' + sk.name + ' ฟื้นฟูพลังชีวิตของคุณ!');
+      } else {
+        var pMatch = String(sk.note || '').match(/\[power:(\d+)\]/i);
+        var basePow = pMatch ? Number(pMatch[1]) : 32;
+        var sTotal = roll + atkMod + 3;
+        logs.push('🎲 ทอยสกิล D30: ' + roll + ' + โบนัส ' + (atkMod + 3) + ' = ' + sTotal + ' (DC ' + cs.atkDc + ')');
+        if (roll > 1 && sTotal >= cs.atkDc - 2) {
+          var sDmg = basePow + Math.max(0, atkMod * 3) + (roll >= 24 ? 12 : 0);
+          cs.curHp = Math.max(0, cs.curHp - sDmg);
+          logs.push('🔥 "' + sk.name + '" ปะทะเป้าหมายอย่างรุนแรง!');
+          if (cs.partPool.length && cs.debuffs.length < 3) {
+            var sdb = cs.partPool[cs.debuffs.length % cs.partPool.length];
+            if (cs.debuffs.indexOf(sdb) < 0) { cs.debuffs.push(sdb); events.push('⚔️ ' + cs.enemy + ': ' + sdb); }
+          }
+        } else {
+          cs.curHp = Math.max(0, cs.curHp - Math.round(basePow * 0.4));
+          logs.push('⚡ "' + sk.name + '" เฉี่ยวเป้าหมายไป สร้างความเสียหายได้เพียงบางส่วน');
+        }
+      }
+    } else if (act.kind === 'item') {
+      var inv = getInvSection(storySave.hud);
+      var it = inv && inv.items.filter(function (x) { return x.name === act.name; })[0];
+      if (!it) return;
+      var note = it.note || '';
+      var cDmg = note.match(/\[combat_dmg:(\d+)\]/i);
+      var uHp = note.match(/\[usable:hp:(\d+)\]/i);
+      var uMp = note.match(/\[usable:mp:(\d+)\]/i);
+      if (!cDmg && !uHp && !uMp && !/ยา|ฟื้น|ระเบิด|มีดสั้น|ยันต์/i.test(it.name + ' ' + note)) {
+        toast(['📌 ไอเท็มนี้ใช้ในการต่อสู้ไม่ได้']);
+        return;
+      }
+      add('user', '🎒 ใช้ไอเท็ม: ' + it.name);
+      removeStoryItem(it.name, 1, events);
+      if (cDmg) {
+        cs.curHp = Math.max(0, cs.curHp - Number(cDmg[1]));
+        logs.push('💣 ใช้ ' + it.name + ' โจมตีใส่ ' + cs.enemy + ' เต็มๆ!');
+      } else if (uMp) {
+        changeStoryBar('mp', Number(uMp[1]), events);
+        logs.push('💧 ฟื้นฟูพลังด้วย ' + it.name);
+      } else {
+        changeStoryBar('hp', uHp ? Number(uHp[1]) : 35, events);
+        logs.push('❤️ ฟื้นฟูบาดแผลด้วย ' + it.name);
+      }
+    } else if (act.kind === 'defend') {
+      add('user', '🛡️ ตั้งการ์ดป้องกันและดูเชิงศัตรู');
+      cs.defending = true;
+      changeStoryBar('mp', 8, events);
+      logs.push('🛡️ คุณตั้งรับอย่างรัดกุม ลดความเสียหายที่จะได้รับลง และฟื้นพลังเล็กน้อย');
+    } else if (act.kind === 'flee') {
+      add('user', '🏃 พยายามหาช่องทางหลบหนี!');
+      var fTotal = roll + defMod;
+      if (roll === 30 || fTotal >= 13) {
+        add('model', '🎲 ทอยหลบหนี D30: ' + roll + ' + ' + defMod + ' = ' + fTotal + ' — สำเร็จ! คุณฉากหลบออกมาได้อย่างหวุดหวิด!');
+        var nextAfterFlee = cs.fleeNext;
+        storySave.combatState = null;
+        storySave.hud.combat = null;
+        storySave.turn += 1;
+        renderStoryNode(nextAfterFlee, false);
+        return;
+      } else {
+        logs.push('🎲 ทอยหลบหนี D30: ' + roll + ' + ' + defMod + ' = ' + fTotal + ' — ล้มเหลว! ' + cs.enemy + ' ดักทางไว้ได้ทัน!');
+      }
+    }
+
+    if (cs.curHp <= 0) {
+      syncCombatHudBar();
+      events.push('🏆 เอาชนะ ' + cs.enemy + ' สำเร็จ!');
+      add('model', logs.join('\n') + '\n\n🏆 ' + cs.enemy + ' ล้มลงหมดสภาพ การต่อสู้ยุติลงด้วยชัยชนะของคุณ!');
+      var winNode = cs.winNext;
+      storySave.combatState = null;
+      storySave.hud.combat = null;
+      storySave.turn += 1;
+      setHud(storySave.hud, events);
+      renderStoryNode(winNode, false);
+      syncStoryServer(true);
+      return;
+    }
+
+    var moveTxt = cs.moves[Math.floor(Math.random() * cs.moves.length)];
+    var eRoll = Math.floor(Math.random() * 30) + 1;
+    var dodgeDc = 10 + Math.max(0, defMod);
+    if (eRoll <= 4 || eRoll < dodgeDc - 4) {
+      logs.push('⚡ ' + cs.enemy + ' ' + moveTxt + ' แต่คุณหลบพ้นได้อย่างฉิวเฉียด!');
+    } else {
+      var rawDmg = cs.enemyDmg - Math.max(0, cs.debuffs.length * 2) - Math.max(0, defMod);
+      if (eRoll >= 27) rawDmg = Math.round(rawDmg * 1.35);
+      if (cs.defending) rawDmg = Math.round(rawDmg * 0.4);
+      rawDmg = Math.max(3, rawDmg);
+      changeStoryBar('hp', -rawDmg, events);
+      logs.push('💥 ' + cs.enemy + ' ' + moveTxt + ' (คุณเสีย HP -' + rawDmg + ')');
+    }
+    cs.defending = false;
+
+    syncCombatHudBar();
+    setHud(storySave.hud, events);
+    add('model', logs.join('\n'));
+
+    var hpNow = findBar(storySave.hud, 'hp');
+    if (hpNow && hpNow.cur <= 0) {
+      storySave.dead = true;
+      storySave.combatState = null;
+      storySave.hud.combat = null;
+      setHud(storySave.hud);
+      renderDeathScreen('คุณพ่ายแพ้ในการต่อสู้กับ ' + cs.enemy);
+      syncStoryServer(true);
+      return;
+    }
+
+    renderStoryCombatButtons();
+    syncStoryServer(false);
+  }
+
+  function renderDeathScreen(reasonText) {
+    Array.prototype.forEach.call(document.querySelectorAll('.choices'), function (e) { e.remove(); });
+    setBarVisibility(false);
+
+    var card = mk('div', 'dead-card');
+    card.appendChild(mk('div', '', '💀 YOU DIED — ตัวละครของคุณเสียชีวิตแล้ว'));
+    var sub = mk('div', '', reasonText || 'การเดินทางของคุณสิ้นสุดลงตรงนี้...');
+    sub.style.fontSize = '13px'; sub.style.color = '#fca5a5'; sub.style.marginTop = '4px';
+    card.appendChild(sub);
+    chat.appendChild(card);
+
+    var box = mk('div', 'choices');
+    var cps = storySave.checkpoints || [];
+    if (cps.length) {
+      var lastCp = cps[cps.length - 1];
+      var bLoad = mk('button', 'chbtn rewind-btn', '⏪ โหลดเซฟกลับไปก่อนตาย (' + lastCp.label + ')');
+      bLoad.addEventListener('click', function () { restoreStoryCheckpoint(cps.length - 1); });
+      box.appendChild(bLoad);
+
+      if (cps.length > 1) {
+        var bPick = mk('button', 'chbtn', '📂 เลือกจุดเซฟย้อนเวลาก่อนหน้าอื่นๆ (' + cps.length + ' จุด)');
+        bPick.addEventListener('click', openRewindModal);
+        box.appendChild(bPick);
+      }
+    }
+
+    var bRestartSame = mk('button', 'chbtn', '🔄 เล่นตัวละครเดิมตั้งแต่ฉากแรก (ไม่ต้องรอ AI สร้างใหม่)');
+    bRestartSame.addEventListener('click', restartSameStoryCharacter);
+    box.appendChild(bRestartSame);
+
+    var bNewWorld = mk('button', 'chbtn combat-btn', '🌍 สร้างโลก/เนื้อเรื่องใหม่เลย');
+    bNewWorld.addEventListener('click', function () { modal.style.display = 'flex'; });
+    box.appendChild(bNewWorld);
+
+    chat.appendChild(box);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function renderEndingCard(node) {
+    Array.prototype.forEach.call(document.querySelectorAll('.choices'), function (e) { e.remove(); });
+    var unlockedCount = (storySave.unlockedEndings || []).length;
+    var totalEndings = (storyBook.endings && storyBook.endings.length) || 5;
+
+    var card = mk('div', 'end-card');
+    var badge = mk('div', '', '🏆 ปลดล็อกฉากจบ: ' + (node.ending_rank || 'Ending') + ' (' + unlockedCount + '/' + totalEndings + ')');
+    badge.style.color = '#c4b5fd'; badge.style.fontWeight = '600';
+    card.appendChild(badge);
+    var titleEl = mk('div', '', '✨ ' + (node.title || 'บทสรุปของการเดินทาง'));
+    titleEl.style.fontSize = '18px'; titleEl.style.fontWeight = '600'; titleEl.style.margin = '4px 0';
+    card.appendChild(titleEl);
+    var hintEl = mk('div', '', 'คุณเก็บฉากจบของเรื่องนี้ไปแล้ว ' + unlockedCount + ' จาก ' + totalEndings + ' แบบ! สามารถย้อนกลับไปเลือกเส้นทางอื่นเพื่อเก็บฉากจบที่เหลือได้ทันที');
+    hintEl.style.fontSize = '12px'; hintEl.style.color = '#aaa';
+    card.appendChild(hintEl);
+    chat.appendChild(card);
+
+    var box = mk('div', 'choices');
+    if ((storySave.checkpoints || []).length) {
+      var bRew = mk('button', 'chbtn rewind-btn', '⏪ ย้อนกลับไปจุดตัดสินใจก่อนหน้า (ล่าฉากจบอื่นต่อทันที)');
+      bRew.addEventListener('click', openRewindModal);
+      box.appendChild(bRew);
+    }
+    var bReplay = mk('button', 'chbtn', '🔄 เริ่มเล่นเรื่องเดิมตั้งแต่ต้นด้วยตัวละครเดิม');
+    bReplay.addEventListener('click', restartSameStoryCharacter);
+    box.appendChild(bReplay);
+
+    var bEndList = mk('button', 'chbtn chuse', '🏆 ดูสมุดสะสมฉากจบทั้งหมด (' + unlockedCount + '/' + totalEndings + ')');
+    bEndList.addEventListener('click', openEndingsModal);
+    box.appendChild(bEndList);
+
+    var bNew = mk('button', 'chbtn', '🌍 สร้างเกม/โลกใหม่');
+    bNew.addEventListener('click', function () { modal.style.display = 'flex'; });
+    box.appendChild(bNew);
+
+    chat.appendChild(box);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function restoreStoryCheckpoint(idx) {
+    var cp = storySave.checkpoints && storySave.checkpoints[idx];
+    if (!cp) return;
+    document.getElementById('rewindModal').style.display = 'none';
+    storySave.currentNode = cp.nodeId;
+    storySave.turn = cp.turn;
+    storySave.hud = cloneObj(cp.hud);
+    storySave.combatState = null;
+    storySave.dead = false;
+    storySave.checkpoints = storySave.checkpoints.slice(0, idx + 1);
+
+    chat.innerHTML = '';
+    add('model', '⏪ ย้อนเวลากลับมายัง: ' + cp.label);
+    setHud(storySave.hud);
+    renderStoryNode(cp.nodeId, true);
+    syncStoryServer(true);
+  }
+
+  function restartSameStoryCharacter() {
+    document.getElementById('rewindModal').style.display = 'none';
+    var keptEndings = (storySave && storySave.unlockedEndings) ? storySave.unlockedEndings.slice() : [];
+    storySave = {
+      currentNode: storyBook.start_node,
+      turn: 1,
+      hud: cloneObj(storyBook.initial_hud),
+      combatState: null,
+      dead: false,
+      unlockedEndings: keptEndings,
+      checkpoints: [],
+      historyLog: []
+    };
+    chat.innerHTML = '';
+    add('model', '🔄 เริ่มต้นการเดินทางครั้งใหม่ของตัวละครเดิมใน "' + storyBook.title + '"');
+    setHud(storySave.hud);
+    updateEndingsBtnLabel();
+    renderStoryNode(storySave.currentNode, false);
+    syncStoryServer(true);
+  }
+
+  function openRewindModal() {
+    var list = document.getElementById('rewindList');
+    list.innerHTML = '';
+    var cps = (storySave && storySave.checkpoints) || [];
+    if (!cps.length) {
+      list.appendChild(mk('div', 'hnote', '(ยังไม่มีจุดเซฟก่อนหน้า)'));
+    } else {
+      for (var i = cps.length - 1; i >= 0; i--) {
+        (function (idx) {
+          var cp = cps[idx];
+          var b = mk('button', 'cp-item');
+          var hpB = cp.hud && cp.hud.bars && cp.hud.bars[0];
+          b.innerHTML = '<span>' + cp.label + '</span><b style="color:#93c5fd;">' + (hpB ? '❤️ ' + hpB.cur : '') + '</b>';
+          b.addEventListener('click', function () { restoreStoryCheckpoint(idx); });
+          list.appendChild(b);
+        })(i);
+      }
+    }
+    var bStart = mk('button', 'choice', '🔄 เริ่มต้นตั้งแต่ฉากที่ 1 ใหม่ (ตัวละครเดิม)');
+    bStart.style.marginTop = '10px'; bStart.style.textAlign = 'center';
+    bStart.addEventListener('click', restartSameStoryCharacter);
+    list.appendChild(bStart);
+    document.getElementById('rewindModal').style.display = 'flex';
+  }
+
+  function openEndingsModal() {
+    var box = document.getElementById('endingsList');
+    box.innerHTML = '';
+    var eds = (storyBook && storyBook.endings) || [];
+    var unlocked = (storySave && storySave.unlockedEndings) || [];
+    eds.forEach(function (ed, idx) {
+      var got = unlocked.indexOf(ed.id) >= 0;
+      var r = mk('div', 'hrow');
+      var left = mk('div', '', (got ? '🏆 ' : '🔒 ') + (idx + 1) + '. [' + (ed.rank || 'Ending') + '] ' + (got ? ed.title : '??? (ยังไม่ปลดล็อก)'));
+      if (got && ed.summary) left.appendChild(mk('small', '', ed.summary));
+      r.appendChild(left);
+      box.appendChild(r);
+    });
+    document.getElementById('endingsModal').style.display = 'flex';
+  }
+
+  document.getElementById('rewindbtn').addEventListener('click', openRewindModal);
+  document.getElementById('rewindClose').addEventListener('click', function () { document.getElementById('rewindModal').style.display = 'none'; });
+  document.getElementById('endingsbtn').addEventListener('click', openEndingsModal);
+  document.getElementById('endingsClose').addEventListener('click', function () { document.getElementById('endingsModal').style.display = 'none'; });
 </script>
 </body>
 </html>
