@@ -37,7 +37,6 @@
   .box a { color: #7db3ff; }
   .choices { display: flex; flex-direction: column; gap: 6px; margin: 4px 4% 10px 0; }
   .chbtn { background: #2a3f66; color: #fff; text-align: left; padding: 10px 12px; font-size: 14px; line-height: 1.4; white-space: normal; }
-  .chbtn:disabled { opacity: 0.65; cursor: wait; }
   #cmdbtn { background: #333; color: #ddd; padding: 0 12px; }
   #cmdGrid button { background: #333; color: #eee; font-size: 14px; padding: 10px 6px; text-align: left; }
   #hudbar { display: none; align-items: center; gap: 8px; padding: 6px 12px; background: #161616; border-bottom: 1px solid #2a2a2a; overflow-x: auto; cursor: pointer; }
@@ -92,7 +91,7 @@
   .srow { display: flex; gap: 6px; margin-bottom: 10px; }
   .srow button { flex: 1; text-align: center; }
   #toast { display: none; position: fixed; left: 12px; right: 12px; bottom: 78px; background: rgba(30,30,30,.96); border: 1px solid #444; border-radius: 10px; padding: 8px 12px; font-size: 13px; line-height: 1.6; z-index: 5; pointer-events: none; }
-  .chbtn.locked { background: #262626; color: #777; border: 1px dashed #444; cursor: not-allowed; opacity: 1; }
+  .chbtn.locked { background: #262626; color: #777; border: 1px dashed #444; cursor: not-allowed; }
   .chbtn.combat-btn { background: #6b2121; }
   .chbtn.defend-btn { background: #2d4a3e; }
   .chbtn.rewind-btn { background: #3b3054; text-align: center; }
@@ -105,7 +104,7 @@
 </head>
 <body>
   <div id="top">
-    <span>RPG GM <span id="prefetchBadge" style="display:none;font-size:11px;color:#a78bfa;margin-left:6px;">⚡ เตรียมฉากถัดไป...</span></span>
+    <span>RPG GM</span>
     <span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
       <button id="endingsbtn" style="display:none;">🏆 ฉากจบ</button>
       <button id="rewindbtn" style="display:none;">⏪ ย้อนเวลา</button>
@@ -129,7 +128,7 @@
   <div class="box">
     <div style="margin-bottom:12px;font-size:15px;line-height:1.5;">เริ่มเกมใหม่ เลือกโหมดที่ต้องการเล่น<br><span style="font-size:12px;color:#aaa;">(บันทึกเก่าถูกเก็บไว้ในชีตอีกแท็บ ไม่ถูกลบ)</span></div>
     <button class="choice" id="openStoryStart" style="background:linear-gradient(90deg,#4f46e5,#7c3aed);font-weight:600;">⚡ โหมดเนื้อเรื่อง 0 วินาที (50+ ฉาก · 5 ฉากจบ)</button>
-    <div style="font-size:11px;color:#aaa;margin:-2px 0 10px;">AI วางโครงเรื่องใหญ่ + แอบสร้างฉากถัดไปรอไว้เบื้องหลัง เริ่มไวใน ~15 วิ กดปุ๊บเด้งปั๊บ!</div>
+    <div style="font-size:11px;color:#aaa;margin:-2px 0 10px;">AI วางเนื้อเรื่องครบทั้ง 5 บทและระบบต่อสู้ไว้ล่วงหน้าทั้งหมด กดปุ๊บเปลี่ยนฉากทันทีไม่ต้องรอโหลด</div>
     <button class="choice" data-preset="magic">🏫 โหมดอิสระ (เดิม): โรงเรียนเวทมนตร์</button>
     <button class="choice" data-preset="custom">🌍 โหมดอิสระ (เดิม): ออกแบบโลกใหม่</button>
     <button id="cancel">ยกเลิก</button>
@@ -143,20 +142,20 @@
       <button id="storyStartClose" style="background:#444;color:#ddd;padding:6px 12px;font-size:13px;">ปิด</button>
     </div>
     <div id="storyFormArea">
-      <div style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:8px;">พิมพ์สั้นๆ หรือเว้นว่างให้ AI สุ่มได้เลย! ระบบจะวางโครงเรื่องใหญ่ 5 บท + สร้างฉากชุดแรกให้เข้าเล่นได้ไวใน ~10–15 วินาที แล้วแอบเขียนฉากถัดไปรอล่วงหน้าเบื้องหลังขณะที่คุณเล่น!</div>
+      <div style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:8px;">พิมพ์สั้นๆ หรือเว้นว่างให้ AI สุ่มให้ได้เลย ระบบจะสร้างเนื้อเรื่องครบทั้ง 5 บท (55+ ฉาก, ระบบต่อสู้, ไอเท็มกุญแจ และ 5 ฉากจบ) ให้เสร็จรวดเดียวก่อนเริ่มเล่น! (หากเซิร์ฟเวอร์ AI คนเยอะชั่วคราว ระบบจะกดลองต่อให้อัตโนมัติจนครบ 100%)</div>
       <label>1) แนวเรื่อง / โลกที่อยากเล่น (เว้นว่าง = สุ่ม)</label>
       <textarea id="stWorldIn" class="sf-in" rows="2" placeholder="เช่น นักสืบไซเบอร์พังก์ตามล่าองค์กรลับ / เอาชีวิตรอดในดันเจี้ยนโบราณ"></textarea>
       <label>2) แนวตัวละครเอกของคุณ (เว้นว่าง = สุ่ม)</label>
       <textarea id="stCharIn" class="sf-in" rows="2" placeholder="เช่น อดีตมือสังหารความจำเสื่อมชื่อ เรย์ ถนัดมีดสั้นและเวทเงา"></textarea>
       <div class="srow" style="margin-top:8px;">
-        <button id="stGoBtn" class="choice" style="margin:0;text-align:center;background:#4f46e5;">🚀 เริ่มสร้างและเข้าเกม</button>
+        <button id="stGoBtn" class="choice" style="margin:0;text-align:center;background:#4f46e5;">🚀 เริ่มสร้างเนื้อเรื่องทั้งหมด</button>
       </div>
-      <button id="stRandBtn" class="chbtn" style="width:100%;text-align:center;background:#333;">🎲 สุ่มแนวเรื่อง + ตัวละครแล้วเริ่มเลย</button>
+      <button id="stRandBtn" class="chbtn" style="width:100%;text-align:center;background:#333;">🎲 สุ่มแนวเรื่อง + ตัวละครแล้วสร้างเลย</button>
     </div>
     <div id="storyProgArea" style="display:none;">
       <div id="stProgTitle" style="font-size:14px;font-weight:600;color:#c4b5fd;margin-bottom:4px;">กำลังเตรียมสร้างโลก...</div>
       <div class="prog-wrap"><div id="stProgFill" class="prog-fill"></div></div>
-      <div id="stProgSub" style="font-size:12px;color:#aaa;line-height:1.5;white-space:pre-wrap;">ใช้เวลาเพียง ~10–15 วินาที ส่วนบทถัดๆ ไปจะถูกแอบสร้างเบื้องหลังอัตโนมัติระหว่างเล่น!</div>
+      <div id="stProgSub" style="font-size:12px;color:#aaa;line-height:1.5;white-space:pre-wrap;">ใช้เวลาประมาณ 1-2 นาที เมื่อครบ 100% จะเล่นได้ลื่นไหล 0 วินาทีตลอดทั้งเรื่อง!</div>
       <button id="stRetryBtn" class="choice" style="display:none;margin-top:10px;text-align:center;background:#d97706;">🔄 ลองสร้างขั้นนี้อีกครั้ง</button>
     </div>
   </div>
@@ -1081,17 +1080,25 @@
   });
 
   // =========================================================================
-  // ⚡ STORY MODE ENGINE (Rolling Pre-fetch Gamebook + 0s Instant Combat)
+  // ⚡ STORY MODE ENGINE (100% Pre-generated Gamebook + Auto-Retry 503)
   // =========================================================================
-  var STORY_TOTAL_SEGS = 10;
+  var MAX_AUTO_RETRIES = 20;   // จำนวนครั้งสูงสุดที่กดลองใหม่ให้อัตโนมัติต่อบทเมื่อเจอ 503
   var storyBook = null;
   var storySave = null;
-  var storyGenState = { step: 0, world: '', char: '', chaptersMeta: [], busy: false };
+  var storyGenState = { step: 0, world: '', char: '', chaptersMeta: [], busy: false, retryCount: 0, aborted: false };
   var storySyncTimer = null;
-  var prefetchInFlight = {};   // seg -> Promise (กันเรียกซ้ำ)
+  var storyRetryTimer = null;
+  var storyStepTimer = null;
 
   function cloneObj(o) { return JSON.parse(JSON.stringify(o)); }
   function localStoryKey() { return 'rpg_story_save_' + code; }
+
+  function clearStoryTimers() {
+    clearInterval(storyRetryTimer);
+    clearTimeout(storyStepTimer);
+    storyRetryTimer = null;
+    storyStepTimer = null;
+  }
 
   function persistStoryLocal() {
     if (!code || !storySave) return;
@@ -1103,15 +1110,10 @@
     clearTimeout(storySyncTimer);
     var run = function () {
       if (!storySave || gameMode !== 'story') return;
-      // ถ้ากำลังแอบโหลดฉากถัดไปอยู่และไม่ใช่จังหวะบังคับเซฟ ให้รอก่อนเพื่อไม่แย่งคิวล็อกกัน
-      if (!immediate && Object.keys(prefetchInFlight).length > 0) {
-        storySyncTimer = setTimeout(run, 2500);
-        return;
-      }
       api('story_save', { code: code, save: storySave }).catch(function () {});
     };
     if (immediate) run();
-    else storySyncTimer = setTimeout(run, 1500);
+    else storySyncTimer = setTimeout(run, 1200);
   }
 
   function setBarVisibility(showInput, placeholderText) {
@@ -1121,18 +1123,10 @@
     else if (gameMode !== 'story') input.placeholder = 'พิมพ์การกระทำเอง หรือกดตัวเลือกด้านบน';
   }
 
-  function updatePrefetchIndicator() {
-    var badge = document.getElementById('prefetchBadge');
-    if (!badge) return;
-    badge.style.display = (gameMode === 'story' && Object.keys(prefetchInFlight).length > 0) ? 'inline' : 'none';
-  }
-
   function exitStoryModeUI() {
     gameMode = 'sandbox';
     storyBook = null;
     storySave = null;
-    prefetchInFlight = {};
-    updatePrefetchIndicator();
     document.getElementById('endingsbtn').style.display = 'none';
     document.getElementById('rewindbtn').style.display = 'none';
     setBarVisibility(true);
@@ -1148,21 +1142,29 @@
     document.getElementById('rewindbtn').style.display = '';
   }
 
-  // ---------- หน้าต่างสร้างเกมโหมดเนื้อเรื่อง (2 ขั้นสั้นๆ ~10-15 วินาทีเข้าเล่นได้เลย!) ----------
+  // ---------- ตัวสร้างเนื้อเรื่องรวดเดียวครบ 5 บท + ระบบกดลองใหม่อัตโนมัติ ----------
   var storyStartModal = document.getElementById('storyStartModal');
   document.getElementById('openStoryStart').addEventListener('click', function () {
     modal.style.display = 'none';
     openStoryCreator();
   });
   document.getElementById('storyStartClose').addEventListener('click', function () {
-    if (storyGenState.busy) return;
+    // กดยกเลิก/ปิดได้ตลอดเวลา (รวมถึงตอนกำลังนับถอยหลัง Auto-Retry)
+    storyGenState.aborted = true;
+    storyGenState.busy = false;
+    clearStoryTimers();
     storyStartModal.style.display = 'none';
   });
 
   function openStoryCreator() {
+    clearStoryTimers();
+    storyGenState.aborted = false;
+    storyGenState.busy = false;
     document.getElementById('storyFormArea').style.display = 'block';
     document.getElementById('storyProgArea').style.display = 'none';
     document.getElementById('stRetryBtn').style.display = 'none';
+    document.getElementById('storyStartClose').textContent = 'ปิด';
+    document.getElementById('stProgSub').style.color = '#aaa';
     storyStartModal.style.display = 'flex';
   }
 
@@ -1173,220 +1175,155 @@
     startStoryGeneration('สุ่มโลกผจญภัยสุดเข้มข้นหักมุมน่าติดตาม', 'สุ่มตัวละครเอกที่มีความสามารถโดดเด่น');
   });
   document.getElementById('stRetryBtn').addEventListener('click', function () {
+    clearStoryTimers();
     document.getElementById('stRetryBtn').style.display = 'none';
+    document.getElementById('stProgSub').style.color = '#aaa';
     runStoryGenStep();
   });
 
-  function setStoryProg(pct, title, sub) {
+  function setStoryProg(pct, title, sub, subColor) {
     document.getElementById('stProgFill').style.width = pct + '%';
     if (title) document.getElementById('stProgTitle').textContent = title;
     if (sub) document.getElementById('stProgSub').textContent = sub;
+    document.getElementById('stProgSub').style.color = subColor || '#aaa';
   }
 
   function startStoryGeneration(wConcept, cConcept) {
     if (!apiKey) { storyStartModal.style.display = 'none'; askCode('⚠️ กรุณาใส่ Gemini API key ก่อนสร้างเนื้อเรื่อง'); return; }
-    storyGenState = { step: 0, world: wConcept, char: cConcept, chaptersMeta: [], busy: true };
+    clearStoryTimers();
+    storyGenState = { step: 0, world: wConcept, char: cConcept, chaptersMeta: [], busy: true, retryCount: 0, aborted: false };
     document.getElementById('storyFormArea').style.display = 'none';
     document.getElementById('storyProgArea').style.display = 'block';
-    document.getElementById('storyStartClose').style.display = 'none';
+    document.getElementById('stRetryBtn').style.display = 'none';
+    document.getElementById('storyStartClose').textContent = 'ยกเลิก';
     runStoryGenStep();
   }
 
   function runStoryGenStep() {
+    if (storyGenState.aborted) return;
+    clearStoryTimers();
     storyGenState.busy = true;
+    document.getElementById('stRetryBtn').style.display = 'none';
+
+    var retryNote = storyGenState.retryCount > 0
+      ? ' (กำลังลองใหม่อัตโนมัติ รอบที่ ' + storyGenState.retryCount + ')'
+      : '';
+
     if (storyGenState.step === 0) {
-      setStoryProg(35, '📐 ขั้นที่ 1/2: กำลังวางโครงเรื่องใหญ่ ตัวละคร และ 5 ฉากจบ...', 'AI กำลังออกแบบโลก ไอเท็มกุญแจ และเส้นทางทั้ง 5 บท...');
-      api('story_init', { code: code, key: apiKey, worldConcept: storyGenState.world, charConcept: storyGenState.char })
+      setStoryProg(8,
+        '📐 ขั้นที่ 1/6: กำลังวางโครงเรื่องใหญ่ ตัวละคร และ 5 ฉากจบ...' + retryNote,
+        'AI กำลังออกแบบโลก ไอเท็มกุญแจ และเส้นทางแยกทั้งหมด... (หากเซิร์ฟเวอร์ AI คนเยอะ ระบบจะกดลองต่อให้อัตโนมัติ)');
+      api('story_init', {
+        code: code,
+        key: apiKey,
+        worldConcept: storyGenState.world,
+        charConcept: storyGenState.char,
+        isRetry: storyGenState.retryCount > 0
+      })
         .then(function (res) {
+          if (storyGenState.aborted) return;
           if (!res.ok) throw new Error(res.error);
           storyGenState.chaptersMeta = res.chapters || [];
           storyGenState.title = res.title || '';
           storyGenState.step = 1;
-          runStoryGenStep();
+          storyGenState.retryCount = 0;   // สำเร็จขั้นนี้แล้ว รีเซ็ตตัวนับ retry
+          storyStepTimer = setTimeout(runStoryGenStep, 1000);
         })
         .catch(onStoryGenError);
       return;
     }
 
-    setStoryProg(75, '📖 ขั้นที่ 2/2: กำลังสร้างฉากเปิดเรื่องชุดแรก...',
-      'เรื่อง: ' + (storyGenState.title || '-') + '\nเสร็จขั้นนี้เข้าเล่นได้ทันที ส่วนฉากถัดๆ ไปจะถูกแอบสร้างเบื้องหลังอัตโนมัติ!');
+    var ch = storyGenState.step;
+    var chInfo = storyGenState.chaptersMeta[ch - 1];
+    var chTitle = chInfo ? chInfo.title : ('บทที่ ' + ch);
+    var pct = 15 + Math.round(((ch - 1) / 5) * 80);
+    setStoryProg(pct,
+      '📖 ขั้นที่ ' + (ch + 1) + '/6: กำลังเขียนเนื้อเรื่องบทที่ ' + ch + '/5 — "' + chTitle + '"' + retryNote,
+      'เรื่อง: ' + (storyGenState.title || '-') + '\nกำลังสร้างฉาก ทางแยก ศัตรู และไอเท็มของบทที่ ' + ch + '...');
 
-    api('story_chap', { code: code, key: apiKey, seg: 1, entryIds: ['c1_start'] })
+    api('story_chap', { code: code, key: apiKey, chapter: ch })
       .then(function (res) {
+        if (storyGenState.aborted) return;
         if (!res.ok) throw new Error(res.error);
-        setStoryProg(100, '✅ พร้อมเข้าเล่นแล้ว!', 'เข้าสู่โลก "' + (res.storyBook ? res.storyBook.title : storyGenState.title) + '" ทันที...');
-        storyGenState.busy = false;
-        document.getElementById('storyStartClose').style.display = '';
-        try { localStorage.removeItem(localStoryKey()); } catch (e) {}
-        setTimeout(function () {
-          storyStartModal.style.display = 'none';
-          enterStoryMode(res.storyBook, res.storySave);
-        }, 400);
+        storyGenState.retryCount = 0;   // สำเร็จบทนี้แล้ว รีเซ็ตตัวนับ retry
+        if (res.done && res.storyBook) {
+          setStoryProg(100, '✅ สร้างเนื้อเรื่องครบ 100% พร้อมเข้าเล่น!', 'เข้าสู่โลก "' + res.storyBook.title + '" ทันที...', '#86efac');
+          storyGenState.busy = false;
+          document.getElementById('storyStartClose').textContent = 'ปิด';
+          try { localStorage.removeItem(localStoryKey()); } catch (e) {}
+          setTimeout(function () {
+            if (storyGenState.aborted) return;
+            storyStartModal.style.display = 'none';
+            enterStoryMode(res.storyBook, res.storySave);
+          }, 500);
+        } else {
+          storyGenState.step = ch + 1;
+          storyStepTimer = setTimeout(runStoryGenStep, 1000);
+        }
       })
       .catch(onStoryGenError);
   }
 
+  function isFatalApiKeyError(msg) {
+    return /API key|ยังไม่ได้ใส่|INVALID_ARGUMENT|PERMISSION_DENIED|\b400\b|\b401\b|\b403\b/i.test(String(msg || ''));
+  }
+
   function onStoryGenError(err) {
-    storyGenState.busy = false;
-    document.getElementById('storyStartClose').style.display = '';
-    document.getElementById('stProgSub').textContent = '⚠️ เกิดข้อผิดพลาด: ' + err.message + '\nกดปุ่มด้านล่างเพื่อลองขั้นนี้อีกครั้งได้เลย';
-    document.getElementById('stRetryBtn').style.display = 'block';
-  }
+    if (storyGenState.aborted) return;
+    clearStoryTimers();
+    var msg = String((err && err.message) || err || 'เกิดข้อผิดพลาด');
 
-  // ---------- ระบบ Rolling Pre-fetch (มองล่วงหน้าและแอบสร้างฉากชุดถัดไปเบื้องหลัง) ----------
-  function parseSegFromNodeId(nodeId, fallbackSeg) {
-    var s = String(nodeId || '');
-    if (s === 'c1_start') return 1;
-    var mf = s.match(/^f(\d+)_/i);
-    if (mf) return Math.min(STORY_TOTAL_SEGS, Math.max(1, Number(mf[1])));
-    var ms = s.match(/^s(\d+)_/i);
-    if (ms) return Math.min(STORY_TOTAL_SEGS, Math.max(1, Number(ms[1])));
-    if (/^end_\d+/i.test(s)) return STORY_TOTAL_SEGS;
-    return Math.min(STORY_TOTAL_SEGS, Math.max(1, fallbackSeg || 1));
-  }
+    // ถ้าไม่ได้ผิดที่ API key และยังไม่เกินจำนวนครั้งสูงสุด ให้กดลองใหม่อัตโนมัติเลย!
+    if (!isFatalApiKeyError(msg) && storyGenState.retryCount < MAX_AUTO_RETRIES) {
+      storyGenState.retryCount += 1;
+      var waitSec = Math.min(12, 3 + storyGenState.retryCount * 2);   // 5s, 7s, 9s, 11s, 12s...
+      var remain = waitSec;
+      var retryBtn = document.getElementById('stRetryBtn');
+      retryBtn.textContent = '⏩ ลองทันทีเดี๋ยวนี้ (ไม่ต้องรอนับถอยหลัง)';
+      retryBtn.style.display = 'block';
 
-  function getOutgoingTargets(node) {
-    var out = [];
-    if (!node) return out;
-    (node.choices || []).forEach(function (c) { if (c && c.next && out.indexOf(c.next) < 0) out.push(c.next); });
-    if (node.combat) {
-      if (node.combat.win_next && out.indexOf(node.combat.win_next) < 0) out.push(node.combat.win_next);
-      if (node.combat.flee_next && out.indexOf(node.combat.flee_next) < 0) out.push(node.combat.flee_next);
-    }
-    (node.branches || []).forEach(function (b) { if (b && b.next && out.indexOf(b.next) < 0) out.push(b.next); });
-    return out;
-  }
+      var updateCountdownMsg = function () {
+        document.getElementById('stProgSub').style.color = '#fcd34d';
+        document.getElementById('stProgSub').textContent =
+          '⏳ เซิร์ฟเวอร์ AI มีคนใช้งานหนาแน่นชั่วคราว (' + msg.slice(0, 110) + ')\n' +
+          '🔄 ระบบกำลังกดลองขั้นนี้ใหม่อัตโนมัติ (รอบที่ ' + storyGenState.retryCount + '/' + MAX_AUTO_RETRIES + ') ในอีก ' + remain + ' วินาที...\n' +
+          '✨ ปล่อยหน้าจอทิ้งไว้ได้เลย ไม่ต้องกดเอง ข้อมูลบทก่อนหน้ายังอยู่ครบครับ!';
+      };
+      updateCountdownMsg();
 
-  // มองล่วงหน้าจากฉากปัจจุบันไป 5 ก้าว เพื่อหาจุดเชื่อม (Frontier) ที่ยังไม่ได้สร้าง
-  function findMissingFrontiers(startNodeId, maxDepth) {
-    var bySeg = {};
-    if (!storyBook || !storyBook.nodes || !startNodeId) return bySeg;
-    var queue = [{ id: startNodeId, d: 0, parentSeg: 1 }];
-    var visited = {};
-    visited[startNodeId] = true;
-
-    while (queue.length > 0) {
-      var cur = queue.shift();
-      var node = storyBook.nodes[cur.id];
-      if (!node) {
-        var targetSeg = parseSegFromNodeId(cur.id, cur.parentSeg + 1);
-        if (!bySeg[targetSeg]) bySeg[targetSeg] = [];
-        if (bySeg[targetSeg].indexOf(cur.id) < 0) bySeg[targetSeg].push(cur.id);
-        continue;
-      }
-      if (cur.d >= maxDepth) continue;
-      var curSeg = node.seg || parseSegFromNodeId(node.id, cur.parentSeg);
-      var targets = getOutgoingTargets(node);
-      for (var i = 0; i < targets.length; i++) {
-        var tid = targets[i];
-        if (!visited[tid]) {
-          visited[tid] = true;
-          queue.push({ id: tid, d: cur.d + 1, parentSeg: curSeg });
+      storyRetryTimer = setInterval(function () {
+        if (storyGenState.aborted) { clearStoryTimers(); return; }
+        remain -= 1;
+        if (remain <= 0) {
+          clearStoryTimers();
+          runStoryGenStep();
+        } else {
+          updateCountdownMsg();
         }
-      }
-    }
-    return bySeg;
-  }
-
-  function requestSegmentLoad(seg, entryIds) {
-    if (prefetchInFlight[seg]) return prefetchInFlight[seg];
-
-    var callWithRetry = function (retriesLeft) {
-      return api('story_chap', { code: code, key: apiKey, seg: seg, entryIds: entryIds })
-        .then(function (res) {
-          if (res && res.busy && retriesLeft > 0) {
-            return new Promise(function (resolve) { setTimeout(resolve, 1500); })
-              .then(function () { return callWithRetry(retriesLeft - 1); });
-          }
-          if (!res || !res.ok) throw new Error((res && res.error) || 'สร้างฉากถัดไปไม่สำเร็จ');
-          if (res.newNodes && storyBook && storyBook.nodes) {
-            Object.keys(res.newNodes).forEach(function (k) {
-              storyBook.nodes[k] = res.newNodes[k];
-            });
-          }
-          return res;
-        });
-    };
-
-    var p = callWithRetry(2)
-      .then(function (res) {
-        delete prefetchInFlight[seg];
-        updatePrefetchIndicator();
-        return res;
-      })
-      .catch(function (err) {
-        delete prefetchInFlight[seg];
-        updatePrefetchIndicator();
-        throw err;
-      });
-
-    prefetchInFlight[seg] = p;
-    updatePrefetchIndicator();
-    return p;
-  }
-
-  // เรียกอัตโนมัติทุกครั้งที่เข้าฉากใหม่ เพื่อแอบโหลดช่วงถัดไปมารอไว้ล่วงหน้าแบบเงียบๆ
-  function checkAndPrefetchAhead() {
-    if (gameMode !== 'story' || !storyBook || !storySave || storySave.dead) return;
-    if (Object.keys(prefetchInFlight).length > 0) return;
-
-    var missingBySeg = findMissingFrontiers(storySave.currentNode, 5);
-    var segKeys = Object.keys(missingBySeg).map(Number).sort(function (a, b) { return a - b; });
-    if (!segKeys.length) return;
-
-    var nextSeg = segKeys[0];
-    requestSegmentLoad(nextSeg, missingBySeg[nextSeg])
-      .then(function () {
-        // พอโหลดช่วงนี้เสร็จ ลองเช็คซ้ำเผื่อมีจุดเชื่อมใกล้ๆ อีกอันในระยะสายตา
-        var stillNear = findMissingFrontiers(storySave.currentNode, 3);
-        if (Object.keys(stillNear).length > 0) checkAndPrefetchAhead();
-      })
-      .catch(function () {
-        // กรณีโหลดเบื้องหลังพลาด ไม่ต้องกวนผู้เล่น เดี๋ยวพอเดินขยับอีกก้าวจะลองใหม่อัตโนมัติ
-      });
-  }
-
-  // รับประกันว่าฉากปลายทางพร้อมแสดงผล (ถ้าพรีเฟตช์เสร็จแล้ว = ทำงานทันที 0 มิลลิวินาที!)
-  function ensureNodeLoaded(targetId, onReady) {
-    if (storyBook && storyBook.nodes && storyBook.nodes[targetId]) {
-      onReady();
+      }, 1000);
       return;
     }
-    var curNode = storyBook && storyBook.nodes && storyBook.nodes[storySave.currentNode];
-    var curSeg = (curNode && curNode.seg) ? curNode.seg : parseSegFromNodeId(storySave.currentNode, 1);
-    var targetSeg = parseSegFromNodeId(targetId, curSeg + 1);
 
-    var missingBySeg = findMissingFrontiers(storySave.currentNode, 5);
-    var entries = missingBySeg[targetSeg] || [];
-    if (entries.indexOf(targetId) < 0) entries.push(targetId);
-
-    setBusy(true, '⚡ กำลังเปิดฉากถัดไป...');
-    var btns = document.querySelectorAll('.chbtn:not(.locked)');
-    Array.prototype.forEach.call(btns, function (b) { b.disabled = true; });
-
-    requestSegmentLoad(targetSeg, entries)
-      .then(function () {
-        setBusy(false);
-        onReady();
-      })
-      .catch(function (err) {
-        setBusy(false);
-        Array.prototype.forEach.call(btns, function (b) { b.disabled = false; });
-        toast(['⚠️ โหลดฉากถัดไปไม่สำเร็จ (' + err.message + ') กดตัวเลือกเดิมซ้ำเพื่อลองใหม่ได้เลยครับ']);
-      });
+    // กรณีคีย์ผิด หรือลองอัตโนมัติครบ 20 รอบแล้วยังไม่ได้ ค่อยหยุดให้กดเอง
+    storyGenState.busy = false;
+    document.getElementById('storyStartClose').textContent = 'ปิด';
+    document.getElementById('stProgSub').style.color = '#fca5a5';
+    document.getElementById('stProgSub').textContent = '⚠️ เกิดข้อผิดพลาด: ' + msg + '\nกดปุ่มด้านล่างเพื่อลองสร้างขั้นนี้ต่อได้เลย (ข้อมูลบทก่อนหน้าไม่หาย)';
+    var rBtn = document.getElementById('stRetryBtn');
+    rBtn.textContent = '🔄 ลองสร้างขั้นนี้อีกครั้ง';
+    rBtn.style.display = 'block';
+    storyGenState.retryCount = 0;
   }
 
   // ---------- เริ่มเข้าสู่โหมดเนื้อเรื่อง ----------
   function enterStoryMode(book, serverSave) {
     gameMode = 'story';
-    prefetchInFlight = {};
-    updatePrefetchIndicator();
     setupModal.style.display = 'none';
     document.getElementById('setupbtn').style.display = 'none';
 
-    if (!book || !book.nodes || Object.keys(book.nodes).length === 0) {
+    if (!book || !book.nodes || Object.keys(book.nodes).length === 0 || book.chapters_ready < (book.chapters_total || 5)) {
       chat.innerHTML = '';
-      add('model', '⚡ พร้อมเริ่มโหมดเนื้อเรื่องใหม่ กดสร้างเนื้อเรื่องในหน้าต่างที่เปิดขึ้นได้เลยครับ');
+      add('model', '⚠️ เนื้อเรื่องของเซฟนี้ยังสร้างไม่ครบ 5 บท กดปุ่ม "เริ่มเกมใหม่" เพื่อสร้างโหมดเนื้อเรื่องใหม่ได้เลยครับ');
       openStoryCreator();
       return;
     }
@@ -1398,18 +1335,18 @@
       if (rawLocal) localSv = JSON.parse(rawLocal);
     } catch (e) {}
 
-    if (localSv && serverSave && (localSv.turn || 0) > (serverSave.turn || 0)) {
+    if (localSv && serverSave && (localSv.turn || 0) > (serverSave.turn || 0) && book.nodes[localSv.currentNode]) {
       storySave = localSv;
       if (serverSave.unlockedEndings) {
         serverSave.unlockedEndings.forEach(function (eid) {
           if (storySave.unlockedEndings.indexOf(eid) < 0) storySave.unlockedEndings.push(eid);
         });
       }
-    } else if (serverSave && serverSave.currentNode) {
+    } else if (serverSave && book.nodes[serverSave.currentNode]) {
       storySave = serverSave;
     } else {
       storySave = {
-        currentNode: book.start_node || 'c1_start',
+        currentNode: book.start_node,
         turn: 1,
         hud: cloneObj(book.initial_hud),
         combatState: null,
@@ -1424,10 +1361,7 @@
     add('model', '📖 ' + storyBook.title + '\n' + (storyBook.world_summary || ''));
     setHud(storySave.hud);
     updateEndingsBtnLabel();
-
-    ensureNodeLoaded(storySave.currentNode, function () {
-      renderStoryNode(storySave.currentNode, true);
-    });
+    renderStoryNode(storySave.currentNode, true);
   }
 
   // ---------- ตัวช่วยจัดการ HUD ฝั่งหน้าเว็บแบบ 0 วินาที ----------
@@ -1570,14 +1504,11 @@
     if (storySave.checkpoints.length > 12) storySave.checkpoints.shift();
   }
 
-  // ---------- แสดงผลฉากปัจจุบัน + สั่งแอบโหลดฉากถัดไปเบื้องหลังทันที ----------
+  // ---------- แสดงผลฉากปัจจุบัน (0 วินาที ไม่ต้องเรียก AI อีกเลย!) ----------
   function renderStoryNode(nodeId, isReload) {
     var node = storyBook.nodes[nodeId];
     if (!node) {
-      ensureNodeLoaded(nodeId, function () {
-        if (storyBook.nodes[nodeId]) renderStoryNode(nodeId, isReload);
-        else add('model', '⚠️ ไม่พบข้อมูลฉาก (' + nodeId + ') คุณสามารถกดปุ่ม ⏪ ย้อนเวลา เพื่อกลับไปยังฉากก่อนหน้าได้');
-      });
+      add('model', '⚠️ ไม่พบข้อมูลฉาก (' + nodeId + ') คุณสามารถกดปุ่ม ⏪ ย้อนเวลา เพื่อกลับไปยังฉากก่อนหน้าได้');
       return;
     }
 
@@ -1639,7 +1570,6 @@
       setBarVisibility(false);
       renderStoryCombatButtons();
       syncStoryServer(false);
-      checkAndPrefetchAhead();
       return;
     }
 
@@ -1653,14 +1583,12 @@
       setBarVisibility(true, 'พิมพ์คำพูดหรือการกระทำของคุณที่นี่ แล้วกดส่ง...');
       renderStoryChoiceButtons(node.choices || [], true);
       syncStoryServer(false);
-      checkAndPrefetchAhead();
       return;
     }
 
     setBarVisibility(false);
     renderStoryChoiceButtons(node.choices || [], false);
     syncStoryServer(false);
-    checkAndPrefetchAhead();
   }
 
   function renderStoryChoiceButtons(choices, allowEmpty) {
@@ -1695,18 +1623,17 @@
   }
 
   function chooseStoryOption(ch) {
-    ensureNodeLoaded(ch.next, function () {
-      saveCheckpoint();
-      var ev = [];
-      if (ch.req_item && ch.consume_item) removeStoryItem(ch.req_item, 1, ev);
-      if (ch.req_money) addStoryMoney(-ch.req_money, ev);
-      add('user', ch.text);
-      if (ev.length) toast(ev);
-      storySave.turn += 1;
-      renderStoryNode(ch.next, false);
-    });
+    saveCheckpoint();
+    var ev = [];
+    if (ch.req_item && ch.consume_item) removeStoryItem(ch.req_item, 1, ev);
+    if (ch.req_money) addStoryMoney(-ch.req_money, ev);
+    add('user', ch.text);
+    if (ev.length) toast(ev);
+    storySave.turn += 1;
+    renderStoryNode(ch.next, false);
   }
 
+  // ---------- ประมวลผลฉากพิมพ์ตอบเอง (พร้อมระบบลองซ้ำอัตโนมัติกรณีเจอ 503) ----------
   function handleStoryFreeText(text) {
     text = String(text || '').trim();
     if (!text || sendBtn.disabled) return;
@@ -1716,19 +1643,32 @@
     saveCheckpoint();
     add('user', text);
     setBusy(true, 'กำลังประเมินผลคำตอบของคุณ...');
-    api('story_input', { code: code, key: apiKey, nodeId: node.id, text: text })
-      .then(function (res) {
-        setBusy(false);
-        if (!res.ok) { add('model', '⚠️ ' + res.error); return; }
-        if (res.transition) add('model', '✨ ' + res.transition);
-        ensureNodeLoaded(res.next, function () {
+
+    var sendInputWithRetry = function (triesLeft) {
+      api('story_input', { code: code, key: apiKey, nodeId: node.id, text: text })
+        .then(function (res) {
+          if (!res.ok) throw new Error(res.error);
+          setBusy(false);
+          if (res.transition) add('model', '✨ ' + res.transition);
           storySave.turn += 1;
           renderStoryNode(res.next, false);
+        })
+        .catch(function (err) {
+          var msg = String((err && err.message) || err || '');
+          if (!isFatalApiKeyError(msg) && triesLeft > 0) {
+            setBusy(true, '⏳ เซิร์ฟเวอร์ AI คนเยอะ กำลังลองส่งคำตอบให้อัตโนมัติ...');
+            setTimeout(function () { sendInputWithRetry(triesLeft - 1); }, 3500);
+            return;
+          }
+          setBusy(false);
+          add('model', '⚠️ ' + msg + ' (ลองพิมพ์ส่งใหม่อีกครั้ง หรือกดตัวเลือกด้านล่างได้ครับ)');
+          renderStoryChoiceButtons(node.choices || [], true);
         });
-      })
-      .catch(function (err) { setBusy(false); add('model', '⚠️ ' + err.message); });
+    };
+    sendInputWithRetry(3);
   }
 
+  // ---------- ระบบต่อสู้คำนวณทันที 0 วินาที (D30 Instant Turn-based Combat) ----------
   function getStatBonus(keywordRegex) {
     if (!storySave || !storySave.hud) return 1;
     var st = storySave.hud.sections.filter(function (s) { return s.key === 'stats'; })[0];
@@ -1924,14 +1864,12 @@
       add('user', '🏃 พยายามหาช่องทางหลบหนี!');
       var fTotal = roll + defMod;
       if (roll === 30 || fTotal >= 13) {
+        add('model', '🎲 ทอยหลบหนี D30: ' + roll + ' + ' + defMod + ' = ' + fTotal + ' — สำเร็จ! คุณฉากหลบออกมาได้อย่างหวุดหวิด!');
         var nextAfterFlee = cs.fleeNext;
-        ensureNodeLoaded(nextAfterFlee, function () {
-          add('model', '🎲 ทอยหลบหนี D30: ' + roll + ' + ' + defMod + ' = ' + fTotal + ' — สำเร็จ! คุณฉากหลบออกมาได้อย่างหวุดหวิด!');
-          storySave.combatState = null;
-          storySave.hud.combat = null;
-          storySave.turn += 1;
-          renderStoryNode(nextAfterFlee, false);
-        });
+        storySave.combatState = null;
+        storySave.hud.combat = null;
+        storySave.turn += 1;
+        renderStoryNode(nextAfterFlee, false);
         return;
       } else {
         logs.push('🎲 ทอยหลบหนี D30: ' + roll + ' + ' + defMod + ' = ' + fTotal + ' — ล้มเหลว! ' + cs.enemy + ' ดักทางไว้ได้ทัน!');
@@ -1939,18 +1877,16 @@
     }
 
     if (cs.curHp <= 0) {
-      var winNode = cs.winNext;
       syncCombatHudBar();
       events.push('🏆 เอาชนะ ' + cs.enemy + ' สำเร็จ!');
       add('model', logs.join('\n') + '\n\n🏆 ' + cs.enemy + ' ล้มลงหมดสภาพ การต่อสู้ยุติลงด้วยชัยชนะของคุณ!');
+      var winNode = cs.winNext;
       storySave.combatState = null;
       storySave.hud.combat = null;
       storySave.turn += 1;
       setHud(storySave.hud, events);
-      ensureNodeLoaded(winNode, function () {
-        renderStoryNode(winNode, false);
-        syncStoryServer(true);
-      });
+      renderStoryNode(winNode, false);
+      syncStoryServer(true);
       return;
     }
 
@@ -2079,17 +2015,15 @@
     chat.innerHTML = '';
     add('model', '⏪ ย้อนเวลากลับมายัง: ' + cp.label);
     setHud(storySave.hud);
-    ensureNodeLoaded(cp.nodeId, function () {
-      renderStoryNode(cp.nodeId, true);
-      syncStoryServer(true);
-    });
+    renderStoryNode(cp.nodeId, true);
+    syncStoryServer(true);
   }
 
   function restartSameStoryCharacter() {
     document.getElementById('rewindModal').style.display = 'none';
     var keptEndings = (storySave && storySave.unlockedEndings) ? storySave.unlockedEndings.slice() : [];
     storySave = {
-      currentNode: storyBook.start_node || 'c1_start',
+      currentNode: storyBook.start_node,
       turn: 1,
       hud: cloneObj(storyBook.initial_hud),
       combatState: null,
@@ -2102,10 +2036,8 @@
     add('model', '🔄 เริ่มต้นการเดินทางครั้งใหม่ของตัวละครเดิมใน "' + storyBook.title + '"');
     setHud(storySave.hud);
     updateEndingsBtnLabel();
-    ensureNodeLoaded(storySave.currentNode, function () {
-      renderStoryNode(storySave.currentNode, false);
-      syncStoryServer(true);
-    });
+    renderStoryNode(storySave.currentNode, false);
+    syncStoryServer(true);
   }
 
   function openRewindModal() {
