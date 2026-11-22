@@ -1,2090 +1,801 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RPG GM</title>
-<style>
-  html, body { margin: 0; height: 100%; }
-  body {
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    background: #111; color: #eee;
-    display: flex; flex-direction: column;
-    height: 100vh; height: 100dvh;
-  }
-  #top { display: flex; justify-content: space-between; align-items: center;
-         padding: 8px 12px; background: #1a1a1a; font-size: 13px; color: #aaa; gap: 6px; }
-  #top button { background: #333; color: #ddd; font-size: 12px; padding: 6px 10px; }
-  #chat { flex: 1; overflow-y: auto; padding: 12px; }
-  .msg { white-space: pre-wrap; word-break: break-word; margin: 8px 0;
-         padding: 10px 12px; border-radius: 12px; line-height: 1.5; font-size: 15px; }
-  .user { background: #2b4a7a; margin-left: 12%; }
-  .model { background: #222; margin-right: 4%; }
-  #status { font-size: 12px; color: #aaa; padding: 0 12px; min-height: 16px; }
-  #bar { display: flex; gap: 8px; padding: 8px; background: #1a1a1a; }
-  textarea { flex: 1; height: 56px; border-radius: 8px; border: 0; padding: 8px;
-             font-size: 16px; font-family: inherit; resize: none; }
-  button { border: 0; border-radius: 8px; padding: 0 16px; font-size: 16px; cursor: pointer; }
-  #send { background: #3b7ddd; color: #fff; }
-  #send:disabled { background: #555; }
-  .choice { display: block; width: 100%; padding: 12px; margin-bottom: 8px; background: #3b7ddd; color: #fff; text-align: left; }
-  #cancel { display: block; width: 100%; padding: 10px; background: #444; color: #ddd; }
-  .overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-             background: rgba(0,0,0,.75); align-items: center; justify-content: center; padding: 16px; }
-  .box { background: #222; border-radius: 12px; padding: 16px; max-width: 360px; width: 100%; max-height: 90vh; overflow-y: auto; }
-  .box input { width: 100%; box-sizing: border-box; padding: 10px; font-size: 16px; border-radius: 8px; border: 0; margin-bottom: 8px; }
-  .box label { display: block; font-size: 12px; color: #aaa; margin: 6px 0 4px; }
-  .box a { color: #7db3ff; }
-  .choices { display: flex; flex-direction: column; gap: 6px; margin: 4px 4% 10px 0; }
-  .chbtn { background: #2a3f66; color: #fff; text-align: left; padding: 10px 12px; font-size: 14px; line-height: 1.4; white-space: normal; }
-  #cmdbtn { background: #333; color: #ddd; padding: 0 12px; }
-  #cmdGrid button { background: #333; color: #eee; font-size: 14px; padding: 10px 6px; text-align: left; }
-  #hudbar { display: none; align-items: center; gap: 8px; padding: 6px 12px; background: #161616; border-bottom: 1px solid #2a2a2a; overflow-x: auto; cursor: pointer; }
-  .hb { min-width: 92px; flex: 1; border-radius: 6px; padding: 2px 4px; }
-  .hb-t { font-size: 11px; color: #ccc; margin-bottom: 3px; white-space: nowrap; }
-  .hb-track { height: 8px; background: #2b2b2b; border-radius: 4px; overflow: hidden; }
-  .hb-fill { height: 100%; width: 0; transition: width .5s ease; border-radius: 4px; }
-  .hb.down { animation: hbdown .8s; }
-  .hb.up { animation: hbup .8s; }
-  @keyframes hbdown { 0%, 100% { background: transparent; } 30% { background: rgba(229,72,77,.4); } }
-  @keyframes hbup { 0%, 100% { background: transparent; } 30% { background: rgba(34,197,94,.35); } }
-  .hc { font-size: 12px; color: #ddd; background: #262626; padding: 3px 8px; border-radius: 10px; white-space: nowrap; }
-  .hmenu { font-size: 16px; color: #aaa; padding: 0 4px; }
-  #hudTabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 10px; padding-bottom: 4px; }
-  .htab { flex: 0 0 auto; background: #333; color: #ccc; font-size: 13px; padding: 8px 12px; }
-  .htab.on { background: #3b7ddd; color: #fff; }
-  .hrow { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid #333; font-size: 14px; line-height: 1.4; }
-  .hrow small { display: block; color: #999; font-size: 12px; }
-  .hrow .hb-track { margin: 6px 0 2px; width: 100%; min-width: 120px; }
-  .sk-fill { background: #8b5cf6; }
-  .sk-fill.train { background: #f59e0b; }
-  .skl { font-size: 11px; color: #888; margin: 8px 0 2px; }
-  .skv { font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
-  .skrisk { color: #f0a0a0; }
-  .hrow b { white-space: nowrap; font-weight: 600; }
-  .hnote { color: #999; font-size: 13px; padding: 8px 0; }
-  .hbig { margin: 10px 0; }
-  .hbig .hb-t { font-size: 13px; }
-  .hbig .hb-track { height: 12px; }
-  #enemybar { display: none; padding: 6px 12px 8px; background: #1f1414; border-bottom: 1px solid #3a2222; }
-  .en-t { font-size: 13px; color: #f3d0d0; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 8px; }
-  .en-t small { color: #b99; font-size: 11px; text-align: right; }
-  #enemybar .hb-track { height: 10px; }
-  .en-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-  .dchip { font-size: 11px; color: #f5c9c9; background: #3a1f1f; border: 1px solid #6b2b2b; padding: 2px 8px; border-radius: 10px; line-height: 1.4; }
-  .hcombat { background: #3a1f1f; border: 1px solid #6b2b2b; border-radius: 10px; padding: 8px 10px; margin: 10px 0; font-size: 13px; line-height: 1.5; }
-  .sf { margin-bottom: 10px; }
-  .sf-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-  .sf-head label { margin: 6px 0 4px; }
-  .sf-in { width: 100%; box-sizing: border-box; padding: 10px; font-size: 16px; font-family: inherit;
-           border-radius: 8px; border: 0; margin-bottom: 4px; height: auto; resize: vertical; }
-  .sf-hint { display: block; color: #888; font-size: 11px; line-height: 1.4; margin-bottom: 6px; }
-  .sf-mini { background: #333; color: #ddd; font-size: 13px; padding: 4px 8px; flex: 0 0 auto; }
-  .sf-tools { display: flex; gap: 4px; }
-  #setupMsg { font-size: 13px; color: #f0b429; min-height: 18px; margin: 6px 0; white-space: pre-wrap; line-height: 1.5; }
-  .chuse { background: #4a3a66; text-align: center; }
-  .useit { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%;
-           background: #2a3f66; color: #fff; text-align: left; padding: 10px 12px; font-size: 14px;
-           line-height: 1.4; margin-bottom: 6px; white-space: normal; }
-  .useit small { color: #bcd; font-size: 12px; display: block; }
-  .useit b { white-space: nowrap; font-weight: 600; }
-  .srow { display: flex; gap: 6px; margin-bottom: 10px; }
-  .srow button { flex: 1; text-align: center; }
-  #toast { display: none; position: fixed; left: 12px; right: 12px; bottom: 78px; background: rgba(30,30,30,.96); border: 1px solid #444; border-radius: 10px; padding: 8px 12px; font-size: 13px; line-height: 1.6; z-index: 5; pointer-events: none; }
-  .chbtn.locked { background: #262626; color: #777; border: 1px dashed #444; cursor: not-allowed; }
-  .chbtn.combat-btn { background: #6b2121; }
-  .chbtn.defend-btn { background: #2d4a3e; }
-  .chbtn.rewind-btn { background: #3b3054; text-align: center; }
-  .end-card { background: linear-gradient(145deg, #1f1b3a, #171722); border: 1px solid #6366f1; border-radius: 12px; padding: 14px; margin: 10px 4% 10px 0; line-height: 1.6; }
-  .dead-card { background: linear-gradient(145deg, #3a1818, #1a1212); border: 1px solid #dc2626; border-radius: 12px; padding: 14px; margin: 10px 4% 10px 0; line-height: 1.6; }
-  .prog-wrap { background: #2b2b2b; height: 12px; border-radius: 6px; overflow: hidden; margin: 10px 0; }
-  .prog-fill { background: linear-gradient(90deg, #3b82f6, #8b5cf6); height: 100%; width: 0%; transition: width .4s ease; }
-  .cp-item { display: flex; justify-content: space-between; align-items: center; width: 100%; background: #2c2c38; color: #eee; padding: 10px 12px; margin-bottom: 6px; font-size: 13px; text-align: left; }
-</style>
-</head>
-<body>
-  <div id="top">
-    <span>RPG GM</span>
-    <span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
-      <button id="endingsbtn" style="display:none;">🏆 ฉากจบ</button>
-      <button id="rewindbtn" style="display:none;">⏪ ย้อนเวลา</button>
-      <button id="setupbtn" style="display:none;">📝 ฟอร์ม</button>
-      <button id="copylink">🔗 ลิงก์เซฟ</button>
-      <button id="entercode">🔑 ตั้งค่า</button>
-      <button id="newgame">เริ่มเกมใหม่</button>
-    </span>
-  </div>
-  <div id="hudbar" title="กดเพื่อดูสถานะทั้งหมด"></div>
-  <div id="enemybar"></div>
-  <div id="chat"></div>
-  <div id="status"></div>
-  <div id="bar">
-    <button id="cmdbtn" title="คำสั่ง">📋</button>
-    <textarea id="input" placeholder="พิมพ์การกระทำเอง หรือกดตัวเลือกด้านบน"></textarea>
-    <button id="send">ส่ง</button>
-  </div>
+// ============================================================
+// StoryMode.gs — โหมดเนื้อเรื่อง เวอร์ชัน 4 (Instant Chapter 1 + True Parallel Background AI + Anti-Cliché Seed)
+// คุณสมบัติเด่น:
+// 1) เข้าเล่นบทที่ 1 ได้ทันทีใน ~10-15 วินาที แล้วปล่อย AI หลายโมเดลช่วยกันปั่นบทที่ 2-5 ขนานกันเบื้องหลัง!
+// 2) ปลดล็อกคิวตอนเรียก AI (Lock-Free AI Call + Micro Sheet Write Lock) ทำให้รัน 4 บทพร้อมกันได้โดยไม่ติด busy!
+// 3) ระบบสุ่มเมล็ดพันธุ์พล็อต (Procedural Entropy Seed) ผสมเซ็ตติ้ง 36 แบบ + ปมเรื่อง + แบนชื่อโหล โลกและชื่อไม่ซ้ำเดิม!
+// สร้างเป็นไฟล์ชื่อ StoryMode.gs ในโปรเจกต์ Apps Script เดียวกัน
+// ============================================================
 
-<div id="modal" class="overlay">
-  <div class="box">
-    <div style="margin-bottom:12px;font-size:15px;line-height:1.5;">เริ่มเกมใหม่ เลือกโหมดที่ต้องการเล่น<br><span style="font-size:12px;color:#aaa;">(บันทึกเก่าถูกเก็บไว้ในชีตอีกแท็บ ไม่ถูกลบ)</span></div>
-    <button class="choice" id="openStoryStart" style="background:linear-gradient(90deg,#4f46e5,#7c3aed);font-weight:600;">⚡ โหมดเนื้อเรื่อง 0 วินาที (50+ ฉาก · 5 ฉากจบ)</button>
-    <div style="font-size:11px;color:#aaa;margin:-2px 0 10px;">AI วางเนื้อเรื่องครบทั้ง 5 บทและระบบต่อสู้ไว้ล่วงหน้าทั้งหมด กดปุ๊บเปลี่ยนฉากทันทีไม่ต้องรอโหลด</div>
-    <button class="choice" data-preset="magic">🏫 โหมดอิสระ (เดิม): โรงเรียนเวทมนตร์</button>
-    <button class="choice" data-preset="custom">🌍 โหมดอิสระ (เดิม): ออกแบบโลกใหม่</button>
-    <button id="cancel">ยกเลิก</button>
-  </div>
-</div>
+const STORY_CHAPTERS = 5;
 
-<div id="storyStartModal" class="overlay">
-  <div class="box" style="max-width:460px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <span style="font-size:16px;font-weight:600;">⚡ สร้างโหมดเนื้อเรื่อง (Quick Start)</span>
-      <button id="storyStartClose" style="background:#444;color:#ddd;padding:6px 12px;font-size:13px;">ปิด</button>
-    </div>
-    <div id="storyFormArea">
-      <div style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:8px;">พิมพ์สั้นๆ หรือเว้นว่างให้ AI สุ่มให้ได้เลย ระบบจะสร้างเนื้อเรื่องครบทั้ง 5 บท (55+ ฉาก, ระบบต่อสู้, ไอเท็มกุญแจ และ 5 ฉากจบ) ให้เสร็จรวดเดียวก่อนเริ่มเล่น! (หากเซิร์ฟเวอร์ AI คนเยอะชั่วคราว ระบบจะกดลองต่อให้อัตโนมัติจนครบ 100%)</div>
-      <label>1) แนวเรื่อง / โลกที่อยากเล่น (เว้นว่าง = สุ่ม)</label>
-      <textarea id="stWorldIn" class="sf-in" rows="2" placeholder="เช่น นักสืบไซเบอร์พังก์ตามล่าองค์กรลับ / เอาชีวิตรอดในดันเจี้ยนโบราณ"></textarea>
-      <label>2) แนวตัวละครเอกของคุณ (เว้นว่าง = สุ่ม)</label>
-      <textarea id="stCharIn" class="sf-in" rows="2" placeholder="เช่น อดีตมือสังหารความจำเสื่อมชื่อ เรย์ ถนัดมีดสั้นและเวทเงา"></textarea>
-      <div class="srow" style="margin-top:8px;">
-        <button id="stGoBtn" class="choice" style="margin:0;text-align:center;background:#4f46e5;">🚀 เริ่มสร้างเนื้อเรื่องทั้งหมด</button>
-      </div>
-      <button id="stRandBtn" class="chbtn" style="width:100%;text-align:center;background:#333;">🎲 สุ่มแนวเรื่อง + ตัวละครแล้วสร้างเลย</button>
-    </div>
-    <div id="storyProgArea" style="display:none;">
-      <div id="stProgTitle" style="font-size:14px;font-weight:600;color:#c4b5fd;margin-bottom:4px;">กำลังเตรียมสร้างโลก...</div>
-      <div class="prog-wrap"><div id="stProgFill" class="prog-fill"></div></div>
-      <div id="stProgSub" style="font-size:12px;color:#aaa;line-height:1.5;white-space:pre-wrap;">ใช้เวลาประมาณ 1-2 นาที เมื่อครบ 100% จะเล่นได้ลื่นไหล 0 วินาทีตลอดทั้งเรื่อง!</div>
-      <button id="stRetryBtn" class="choice" style="display:none;margin-top:10px;text-align:center;background:#d97706;">🔄 ลองสร้างขั้นนี้อีกครั้ง</button>
-    </div>
-  </div>
-</div>
+// ---------- คลังสุ่มเมล็ดพันธุ์พล็อตป้องกันโลกซ้ำและชื่อโหล ----------
+const SEED_WORLDS = [
+  'กองเรือเหาะล่าอสูรเหนือทะเลเมฆพิษที่พื้นดินสาบสูญ',
+  'มหานครใต้น้ำยุคเครื่องจักรไอน้ำที่ขับเคลื่อนด้วยผลึกเรืองแสงโบราณ',
+  'ขบวนรถไฟหุ้มเกราะนิรันดร์ที่วิ่งฝ่าทุ่งน้ำแข็งวันสิ้นโลกโดยห้ามจอด',
+  'ยุทธภพพังก์อนาคตที่จอมยุทธ์ใช้ยันต์ไซเบอร์และกระบี่พลังงานปราณ',
+  'เกาะกักกันนักเล่นแร่แปรธาตุที่เต็มไปด้วยสิ่งมีชีวิตกลายพันธุ์และทองคำต้องสาป',
+  'สำนักงานนักสืบคดีเหนือธรรมชาติในเมืองหลวงยุค 1920 ที่หมอกทมิฬกลืนกินผู้คนยามวิกาล',
+  'ตลาดมืดข้ามมิติที่ผู้คนใช้ความทรงจำและอายุขัยเป็นสกุลเงินแทนเหรียญทอง',
+  'อาณาจักรลอยฟ้าโบราณที่ดวงอาทิตย์จำลองกำลังจะดับลงในอีก 72 ชั่วโมง',
+  'สถานีวิจัยอวกาศร้างขอบจักรวาลที่เพิ่งขุดพบซากอารยธรรมเอเลี่ยนปรสิต',
+  'เมืองท่าโจรสลัดทะเลทรายที่แล่นเรือใบเหล็กบนคลื่นพายุทรายยักษ์',
+  'คฤหาสน์หอนาฬิกาเวทมนตร์ที่แขกทุกคนติดอยู่ในลูปเวลาฆาตกรรมซ้ำซ้อน',
+  'นครใต้พิภพเจ็ดชั้นที่มนุษย์อาศัยอยู่ในโครงกระดูกของมังกรบรรพกาล',
+  'โลกยุคหลังสงครามเทพเจ้าที่เศษเสี้ยวศาสตราวุธสวรรค์ตกลงมาเป็นดันเจี้ยนมีชีวิต',
+  'เมืองชายแดนคาวบอยเวทมนตร์ที่นายอำเภอใช้กระสุนอาคมล่าค่าหัวปีศาจ',
+  'สถาบันฝึกผู้ควบคุมหุ่นเชิดวิญญาณท่ามกลางสงครามจารกรรมระหว่างสามจักรวรรดิ',
+  'ป่าดึกดำบรรพ์ยักษ์กินคนที่ต้นไม้สูงเสียดฟ้าและชนเผ่าโบราณขี่แมลงยักษ์สู้กัน',
+  'มหานครนีออนใต้โดมกระจกที่บริษัทเมกะคอร์ปควบคุมความฝันของพลเมืองทุกคน',
+  'หมู่บ้านหุบเขาหมอกสีชาดในยุคซามูไรปะทะองเมียวจิและขบวนร้อยอสูร',
+  'กองคาราวานผู้รอดชีวิตที่เดินทางข้ามทวีปเกลือสีขาวซึ่งเต็มไปด้วยภาพลวงตามีชีวิต',
+  'คุกป้อมปราการกลางมหาสมุทรคลั่งที่นักโทษผู้มีพลังพิเศษต้องร่วมมือกันแหกคุก',
+  'อาณาจักรเครื่องกลไขลานที่หัวใจของผู้คนถูกแทนที่ด้วยเฟืองนาฬิกาเวทมนตร์',
+  'เมืองหลวงแห่งหน้ากากเวนิสแฟนตาซีที่ชนชั้นสูงทำสัญญาลับกับปีศาจแห่งเสียงเพลง',
+  'สมรภูมิหุ่นรบจักรกลโบราณที่ขุดพบใต้ซากโบราณสถานแห่งทะเลทรายสีคราม',
+  'สำนักหมอผีและนักปรุงยาพิษในนครลอยน้ำที่เกิดโรคระบาดปริศนาเปลี่ยนคนเป็นหยก'
+];
 
-<div id="rewindModal" class="overlay">
-  <div class="box" style="max-width:420px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <span style="font-size:15px;">⏪ ย้อนเวลา / โหลดจุดเซฟ</span>
-      <button id="rewindClose" style="background:#444;color:#ddd;padding:6px 12px;font-size:13px;">ปิด</button>
-    </div>
-    <div style="font-size:12px;color:#aaa;margin-bottom:8px;">เลือกจุดตัดสินใจก่อนหน้า หรือเริ่มเล่นตัวละครเดิมใหม่ตั้งแต่ต้นเรื่อง (ฉากจบที่เคยเก็บได้แล้วจะไม่หาย)</div>
-    <div id="rewindList"></div>
-  </div>
-</div>
+const SEED_CONFLICTS = [
+  'ต้องตามล่าคนทรยศที่ขโมยวัตถุโบราณชี้ชะตาโลกไปก่อนเที่ยงคืน',
+  'ถูกใส่ร้ายในคดีใหญ่ ต้องหนีการตามล่าไปพร้อมกับสืบหาตัวการที่แท้จริง',
+  'ได้รับภารกิจคุ้มกันพยานปากสำคัญฝ่าวงล้อมมือสังหารไปส่งยังเขตปลอดภัย',
+  'ตื่นขึ้นมาพร้อมตราประทับปริศนาที่ค่อยๆ มอบพลังมหาศาลแต่แลกด้วยคำสาป',
+  'แทรกซึมเข้าไปในงานประมูลใต้ดินขององค์กรลับเพื่อชิงสิ่งของสำคัญกลับคืน',
+  'ค้นพบแผนการสมคบคิดของชนชั้นผู้นำที่จะสังเวยคนทั้งเมืองเพื่อเปิดประตูมิติ',
+  'ต้องบุกสำรวจเขาวงกตต้องห้ามที่เปลี่ยนรูปร่างได้เพื่อหายารักษาชีวิตคนสำคัญ',
+  'เข้าร่วมการแข่งขันคัดเลือกสุดโหดที่มีเบื้องหลังเป็นการทดลองลับระดับชาติ'
+];
 
-<div id="endingsModal" class="overlay">
-  <div class="box" style="max-width:420px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <span style="font-size:15px;">🏆 สมุดสะสมฉากจบ</span>
-      <button id="endingsClose" style="background:#444;color:#ddd;padding:6px 12px;font-size:13px;">ปิด</button>
-    </div>
-    <div id="endingsList"></div>
-  </div>
-</div>
+const SEED_POWERS = [
+  'ศาสตร์ตราประทับโลหิตและอาวุธแปรสภาพ',
+  'เวทมนตร์คลื่นเสียงและดนตรีสะกดวิญญาณ',
+  'กลไกไขลานอาคมและระเบิดแร่ธาตุ',
+  'วิชาเข็มสกัดจุดผสมยาพิษและก้าวพริบตา',
+  'ไซเบอร์แวร์ชีวภาพและสนามพลังแม่เหล็ก',
+  'การ์ดอัญเชิญภูตเงาและพันธสัญญาโบราณ',
+  'ปืนรูนเวทมนตร์และกระสุนธาตุผสม',
+  'ศิลปะการต่อสู้มือเปล่าผสานปราณธาตุธรรมชาติ'
+];
 
-<div id="codeModal" class="overlay">
-  <div class="box">
-    <div id="codeMsg" style="margin-bottom:10px;font-size:14px;line-height:1.5;white-space:pre-wrap;"></div>
-    <label>Gemini API key ของคุณ (ขอฟรีที่ <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>)</label>
-    <input id="keyInput" type="password" placeholder="วางคีย์ที่นี่" autocomplete="off">
-    <div style="font-size:11px;color:#888;margin-bottom:8px;">คีย์เก็บไว้ในเบราว์เซอร์นี้ และถูกส่งผ่านเซิร์ฟเวอร์ของเกมเพื่อเรียก Gemini เท่านั้น ไม่ถูกบันทึกลงชีต</div>
-    <label>รหัสผู้เล่น (ถ้ามีรหัสเดิมให้ใส่ ถ้าไม่มีกดสร้างผู้เล่นใหม่)</label>
-    <input id="codeInput" placeholder="รหัสผู้เล่น" autocomplete="off">
-    <button class="choice" id="codeGo">เข้าด้วยรหัสนี้</button>
-    <button class="choice" id="codeNew">✨ สร้างผู้เล่นใหม่</button>
-  </div>
-</div>
+const SEED_SYLLABLES = [
+  'คาร์, วอล, เซฟ, ทาล, มอร์', 'ซิน, เฟย, หลิน, จ้าว, ไป๋', 'โอ, เคน, เร็น, ทาคา, ฮารุ',
+  'อารอน, เบริก, ดาเรียน, เฟรยา, กิดเดียน', 'นาเดีย, ซาฟีร์, คาซิม, ยาสมิน, รามิ',
+  'คีร่า, วารอน, โซลอน, มิเรย์, เซนต์', 'ลีโอ, วิคเตอร์, คลาร่า, ออสการ์, ไอริส',
+  'ภาคิน, อัคนี, วายุ, รินรดา, กานต์'
+];
 
-<div id="hudModal" class="overlay">
-  <div class="box" style="max-width:420px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <span style="font-size:15px;">🎮 สถานะ</span>
-      <button id="hudClose" style="background:#444;color:#ddd;padding:6px 12px;font-size:13px;">ปิด</button>
-    </div>
-    <div id="hudTabs"></div>
-    <div id="hudBody"></div>
-  </div>
-</div>
-<div id="toast"></div>
+function pickRand_(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
-<div id="useModal" class="overlay">
-  <div class="box">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <span id="useTitle" style="font-size:15px;"></span>
-      <button id="useClose" style="background:#444;color:#ddd;padding:6px 12px;font-size:13px;">ปิด</button>
-    </div>
-    <label>เป้าหมาย / วิธีใช้ (ไม่บังคับ เช่น "หมาป่าตัวซ้าย", "กับตัวเอง")</label>
-    <input id="useTarget" placeholder="เว้นว่างได้" autocomplete="off">
-    <div id="useList"></div>
-  </div>
-</div>
+function buildCreativeEntropySeed_(worldConcept, charConcept) {
+  const isWorldBlank = !worldConcept || /^สุ่ม/.test(worldConcept);
+  const isCharBlank = !charConcept || /^สุ่ม/.test(charConcept);
 
-<div id="skillModal" class="overlay">
-  <div class="box">
-    <div id="skTitle" style="font-size:14px;color:#c4b5fd;margin-bottom:6px;"></div>
-    <div id="skName" style="font-size:20px;font-weight:600;"></div>
-    <div id="skMeta" style="font-size:12px;color:#aaa;margin:2px 0 6px;"></div>
-    <div id="skBody"></div>
-    <button id="skOk" class="choice" style="text-align:center;margin:12px 0 0;">รับทราบ</button>
-  </div>
-</div>
+  let recent = [];
+  try {
+    recent = JSON.parse(pp_().getProperty('RECENT_THEMES') || '[]');
+  } catch (e) { recent = []; }
 
-<div id="setupModal" class="overlay">
-  <div class="box" style="max-width:520px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-      <span id="setupTitle" style="font-size:16px;"></span>
-      <button id="setupClose" style="background:#444;color:#ddd;padding:6px 12px;font-size:13px;">ปิด</button>
-    </div>
-    <div id="setupIntro" style="font-size:12px;color:#aaa;line-height:1.5;margin-bottom:8px;"></div>
-    <button id="setupPreset" class="chbtn" style="display:none;width:100%;margin-bottom:10px;">🏫 ข้ามไปใช้โลกพรีเซ็ต: โรงเรียนเวทมนตร์</button>
-    <label id="setupConceptLabel"></label>
-    <textarea id="setupConcept" class="sf-in" rows="2"></textarea>
-    <div class="srow">
-      <button id="setupDraft" class="chbtn">✨ ให้ AI ร่าง</button>
-      <button id="setupRandom" class="chbtn">🎲 สุ่มทั้งหมด</button>
-    </div>
-    <div id="setupForm"></div>
-    <button id="setupAdd" class="chbtn" style="display:none;width:100%;margin-bottom:8px;background:#333;">+ เพิ่มช่องของคุณเอง</button>
-    <div id="setupMsg"></div>
-    <button id="setupOk" class="choice" style="text-align:center;">✅ ยืนยัน</button>
-  </div>
-</div>
+  const w1 = pickRand_(SEED_WORLDS);
+  const c1 = pickRand_(SEED_CONFLICTS);
+  const p1 = pickRand_(SEED_POWERS);
+  const syl = pickRand_(SEED_SYLLABLES);
 
-<div id="cmdModal" class="overlay">
-  <div class="box">
-    <div style="margin-bottom:10px;font-size:15px;">📋 คำสั่ง <span style="font-size:12px;color:#aaa;">(ไม่นับเทิร์น ไม่ใช้เวลาในเกม)</span></div>
-    <div id="cmdGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;"></div>
-    <button id="cmdClose" style="display:block;width:100%;padding:10px;background:#444;color:#ddd;">ปิด</button>
-  </div>
-</div>
-
-<script>
-  // ★ วาง URL ของ Web App (ที่ลงท้ายด้วย /exec) จาก Apps Script ตรงนี้ ★
-  var API_URL = 'https://script.google.com/macros/s/AKfycbwA_yKG52MneFH2A1NipCmJv9h8PDtw_vS-1UHDXEe4JuZrXS9jO8dNCrZE6wZlMoNZ/exec';
-
-  var chat = document.getElementById('chat');
-  var input = document.getElementById('input');
-  var sendBtn = document.getElementById('send');
-  var statusEl = document.getElementById('status');
-
-  function add(role, text) {
-    Array.prototype.forEach.call(document.querySelectorAll('.choices'), function (e) { e.remove(); });
-    var d = document.createElement('div');
-    d.className = 'msg ' + role;
-    d.textContent = text;
-    chat.appendChild(d);
-    if (role === 'model' && String(text).indexOf('⚠️') !== 0) lastModelText = text;
-    chat.scrollTop = chat.scrollHeight;
+  let directive = '\n\n[กฎเหล็กป้องกันพล็อตซ้ำและชื่อโหล — บังคับทำตาม 100%!]\n';
+  if (isWorldBlank) {
+    directive += '- แรงบันดาลใจเซ็ตติ้งโลกของตานี้ (ดัดแปลงให้สดใหม่): "' + w1 + '"\n';
+    directive += '- ปมเหตุการณ์เปิดเรื่อง: "' + c1 + '"\n';
+    directive += '- ระบบวิชา/พลังต่อสู้หลักในเรื่อง: "' + p1 + '"\n';
+  } else {
+    directive += '- ขยายความโลกที่ผู้เล่นขอมานี้ให้มีเอกลักษณ์ สดใหม่ มีปมขัดแย้งเข้มข้น (' + c1 + ')\n';
   }
 
-  var curChoices = { list: [], panel: false };
-  var lastModelText = '';
-
-  function textChoices(text) {
-    var opts = [];
-    String(text || '').split('\n').forEach(function (line) {
-      var m = line.match(/^\s*([A-E])[\)\.]\s+(.+)$/);
-      if (m) opts.push({ label: m[1] + ') ' + m[2].trim(), send: 'เลือกข้อ ' + m[1] + ': ' + m[2].trim() });
-    });
-    return opts.length >= 2 ? opts : [];
+  if (isCharBlank) {
+    directive += '- สุ่มสร้างตัวละครเอกที่มีอาชีพ นิสัย และปมหลังไม่ซ้ำใคร โดยตั้งชื่อตัวละครเอกและ NPC ให้มีกลิ่นอายพยางค์แนว (' + syl + ')\n';
   }
 
-  function setBusy(busy, label) {
-    sendBtn.disabled = busy;
-    statusEl.textContent = busy ? (label || 'กำลังคิด...') : '';
+  directive += '- ห้ามตั้งชื่อตัวละครหรือชื่อเมืองซ้ำซากยอดฮิตของ AI เด็ดขาด! (ห้ามใช้ชื่อ: เรย์, ไค, ลูคัส, เอเลน่า, อาเธอร์, ลูน่า, เซโร่, อากิระ, คิริโตะ, อาร์เคเดีย, นีโอโตเกียว, เอลโดราโด, เอเทอร์เนีย, องค์กรเงาทมิฬ)\n';
+  if (recent.length) {
+    directive += '- ห้ามซ้ำแนวเรื่องหรือชื่อเรื่องกับเกมก่อนหน้าของผู้เล่นเด็ดขาด: ' + recent.join(' | ') + '\n';
   }
+  return directive;
+}
 
-  function api(action, payload) {
-    if (API_URL.indexOf('https://script.google.com/') !== 0) {
-      return Promise.reject(new Error('ยังไม่ได้ตั้งค่า API_URL ในไฟล์ index.html'));
+function rememberStoryTheme_(title, charName) {
+  try {
+    let recent = JSON.parse(pp_().getProperty('RECENT_THEMES') || '[]');
+    if (!Array.isArray(recent)) recent = [];
+    const entry = hs_(title, 50) + (charName ? ' (ตัวเอก: ' + hs_(charName, 30) + ')' : '');
+    if (entry) {
+      recent.push(entry);
+      if (recent.length > 8) recent = recent.slice(-8);
+      pp_().setProperty('RECENT_THEMES', JSON.stringify(recent));
     }
-    var body = Object.assign({ action: action }, payload || {});
-    return fetch(API_URL, { method: 'POST', body: JSON.stringify(body), redirect: 'follow' })
-      .then(function (r) { return r.json(); })
-      .catch(function (e) {
-        throw new Error('เชื่อมต่อเซิร์ฟเวอร์เกมไม่ได้ (' + e.message + ')');
+  } catch (e) {}
+}
+
+
+// ---------- พรอมต์หลักของโหมดเนื้อเรื่อง ----------
+const STORY_BLUEPRINT_PROMPT = `คุณคือสถาปนิกเกม RPG Gamebook ระดับมืออาชีพที่มีความคิดสร้างสรรค์สูงมาก
+หน้าที่: ออกแบบ "พิมพ์เขียว (Blueprint)" ของเกมเนื้อเรื่องแบบตัวเลือก ความยาว 5 บท (รวม 55+ ฉาก) และมี 5 ฉากจบที่แตกต่างกันชัดเจน
+ตอบเป็น JSON เท่านั้น ห้ามมีข้อความอื่นนอก JSON ห้ามใช้ markdown
+
+โครงสร้าง JSON ที่ต้องส่งกลับ:
+{
+  "title": "ชื่อเรื่องสุดเข้มข้นและไม่ซ้ำใคร",
+  "world_summary": "สรุปเซ็ตติ้งโลก บรรยากาศ และกฎสำคัญ 3-5 ประโยค",
+  "initial_hud": {
+    "meta": {"location": "สถานที่เริ่มต้น", "date": "วันที่ 1", "time": "08:00", "weather": "บรรยากาศ", "goal": "เป้าหมายแรก"},
+    "bars": [
+      {"key": "hp", "label": "HP", "icon": "❤️", "cur": 100, "max": 100},
+      {"key": "mp", "label": "MP", "icon": "💧", "cur": 50, "max": 50}
+    ],
+    "counters": [
+      {"key": "money", "label": "เงิน", "icon": "💰", "value": 100}
+    ],
+    "sections": [
+      {"key": "character", "label": "ตัวละคร", "type": "fields", "items": [{"k": "ชื่อ", "v": "..."}, {"k": "เพศ", "v": "..."}, {"k": "อายุ", "v": "..."}, {"k": "บทบาท", "v": "..."}, {"k": "ภูมิหลัง", "v": "..."}]},
+      {"key": "stats", "label": "สถิติ", "type": "fields", "items": [{"k": "พลังโจมตี", "v": "+2"}, {"k": "ความแม่นยำ", "v": "+1"}, {"k": "ป้องกัน", "v": "+1"}, {"k": "ไหวพริบ", "v": "+2"}]},
+      {"key": "inventory", "label": "ไอเท็ม", "type": "items", "items": [
+        {"name": "ชื่อไอเท็มฟื้นฟูตามธีมโลก", "qty": 3, "note": "ฟื้นฟู HP +35 [usable:hp:35]"},
+        {"name": "ชื่อไอเท็มฟื้นพลังตามธีมโลก", "qty": 2, "note": "ฟื้นฟูพลัง +25 [usable:mp:25]"}
+      ]},
+      {"key": "skills", "label": "สกิล / วิชา", "type": "skills", "usable": true, "items": [
+        {"name": "ชื่อท่าโจมตีเอกลักษณ์", "kind": "สกิลต่อสู้", "status": "unlocked", "level": 1, "progress": 0, "cost": "10", "limit": "ใช้ในการต่อสู้ สร้างความเสียหายรุนแรง", "risk": "", "note": "ท่าโจมตีแม่นยำ [power:32]"},
+        {"name": "ชื่อท่าฟื้นฟูเอกลักษณ์", "kind": "สกิลเสริม", "status": "unlocked", "level": 1, "progress": 0, "cost": "12", "limit": "ฟื้นฟูร่างกาย", "risk": "", "note": "ฟื้นฟูบาดแผล [heal:35]"}
+      ]},
+      {"key": "clues", "label": "เบาะแสสำคัญ", "type": "list", "items": []}
+    ]
+  },
+  "key_items": [
+    {"name": "ชื่อไอเท็มกุญแจ/ความลับ 1", "obtained_in_chapter": 1, "used_in_chapter": 2, "purpose": "ใช้ปลดล็อกทางลับหรือเอาชนะอุปสรรคในบทที่ 2"},
+    {"name": "ชื่อไอเท็มกุญแจ/ความลับ 2", "obtained_in_chapter": 2, "used_in_chapter": 4, "purpose": "ใช้เปิดทางลับในบทที่ 4"},
+    {"name": "ชื่อไอเท็มกุญแจ/ความลับ 3", "obtained_in_chapter": 3, "used_in_chapter": 5, "purpose": "ไอเท็มสำคัญสู่ฉากจบลับ/ฉากจบแท้จริงในบทที่ 5"}
+  ],
+  "endings": [
+    {"id": "end_1", "rank": "True Ending", "title": "ชื่อฉากจบแท้จริง", "summary": "เงื่อนไขและบทสรุป"},
+    {"id": "end_2", "rank": "Good Ending", "title": "ชื่อฉากจบปกติสุข", "summary": "เงื่อนไขและบทสรุป"},
+    {"id": "end_3", "rank": "Bittersweet Ending", "title": "ชื่อฉากจบแลกด้วยความสูญเสีย", "summary": "เงื่อนไขและบทสรุป"},
+    {"id": "end_4", "rank": "Dark / Bad Ending", "title": "ชื่อฉากจบด้านมืดหรือล้มเหลว", "summary": "เงื่อนไขและบทสรุป"},
+    {"id": "end_5", "rank": "Secret Ending", "title": "ชื่อฉากจบลับคาดไม่ถึง", "summary": "เงื่อนไขและบทสรุป"}
+  ],
+  "chapters": [
+    {
+      "chapter": 1,
+      "title": "ชื่อบทที่ 1",
+      "entry_nodes": [{"id": "c1_start", "desc": "จุดเปิดเรื่องพร้อมสถานที่และเหตุการณ์เริ่มต้น"}],
+      "exit_targets": [
+        {"id": "c2_main", "desc": "เข้าสู่บทที่ 2 เส้นทางหลัก (ระบุชัดเจนว่าจบฉากสุดท้ายของบท 1 ที่ไหน อย่างไร)"},
+        {"id": "c2_alt", "desc": "เข้าสู่บทที่ 2 เส้นทางลับ/ทางอ้อม (ระบุชัดเจนว่ามาถึงจุดนี้ได้อย่างไร)"}
+      ],
+      "outline": "รายละเอียดเหตุการณ์ในบทที่ 1 ตัวละคร NPC ชื่อเฉพาะ ศัตรูที่เจอ และจุดได้ไอเท็มกุญแจ"
+    },
+    {
+      "chapter": 2,
+      "title": "ชื่อบทที่ 2",
+      "entry_nodes": [
+        {"id": "c2_main", "desc": "รายละเอียดจุดเริ่มต้นบท 2 สายหลัก"},
+        {"id": "c2_alt", "desc": "รายละเอียดจุดเริ่มต้นบท 2 สายลับ"}
+      ],
+      "exit_targets": [
+        {"id": "c3_main", "desc": "เข้าบทที่ 3 เส้นทางหลัก"},
+        {"id": "c3_alt", "desc": "เข้าบทที่ 3 เส้นทางรอง"}
+      ],
+      "outline": "รายละเอียดเหตุการณ์ในบทที่ 2 NPC ศัตรู และจุดใช้/เก็บไอเท็มกุญแจ"
+    },
+    {
+      "chapter": 3,
+      "title": "ชื่อบทที่ 3",
+      "entry_nodes": [{"id": "c3_main", "desc": "..."}, {"id": "c3_alt", "desc": "..."}],
+      "exit_targets": [{"id": "c4_main", "desc": "..."}, {"id": "c4_alt", "desc": "..."}],
+      "outline": "รายละเอียดเหตุการณ์จุดพลิกผันกลางเรื่องในบทที่ 3"
+    },
+    {
+      "chapter": 4,
+      "title": "ชื่อบทที่ 4",
+      "entry_nodes": [{"id": "c4_main", "desc": "..."}, {"id": "c4_alt", "desc": "..."}],
+      "exit_targets": [
+        {"id": "c5_high", "desc": "เข้าบทสุดท้ายแบบได้เปรียบ/รู้ความจริง"},
+        {"id": "c5_mid", "desc": "เข้าบทสุดท้ายแบบปกติ"},
+        {"id": "c5_low", "desc": "เข้าบทสุดท้ายแบบเสียเปรียบ/วิกฤต"}
+      ],
+      "outline": "รายละเอียดเหตุการณ์บุกเข้าใกล้ความจริงในบทที่ 4"
+    },
+    {
+      "chapter": 5,
+      "title": "ชื่อบทที่ 5 (บทตัดสินชะตา)",
+      "entry_nodes": [
+        {"id": "c5_high", "desc": "..."},
+        {"id": "c5_mid", "desc": "..."},
+        {"id": "c5_low", "desc": "..."}
+      ],
+      "exit_targets": [
+        {"id": "end_1", "desc": "ฉากจบ 1"},
+        {"id": "end_2", "desc": "ฉากจบ 2"},
+        {"id": "end_3", "desc": "ฉากจบ 3"},
+        {"id": "end_4", "desc": "ฉากจบ 4"},
+        {"id": "end_5", "desc": "ฉากจบ 5"}
+      ],
+      "outline": "ศึกตัดสินกับบอสใหญ่ จุดหักเห และทางแยกไปสู่ฉากจบทั้ง 5 แบบ"
+    }
+  ]
+}
+
+กติกาสำคัญ:
+- ปรับชื่อ label/icon ของ bars (ต้องคง key "hp" และ "mp" เสมอ), counters (คง key "money" เสมอ), skills และ items ให้เข้ากับธีมโลก!
+- เขียน desc ของ entry_nodes และ exit_targets ของทุกบทให้ชัดเจน เพราะระบบจะกระจายให้ AI หลายตัวเขียนบทที่ 2-5 พร้อมกันแบบขนาน!`;
+
+
+const STORY_CHAPTER_PROMPT = `คุณคือนักเขียนและผู้ออกแบบด่านเกม RPG Gamebook
+หน้าที่: สร้างฉากทั้งหมดของ "บทที่ระบุ" ตาม [BLUEPRINT] ให้เป็นกราฟฉาก (Nodes) ที่เชื่อมกันสมบูรณ์ ไม่ตัน และสนุกเข้มข้น
+ตอบเป็น JSON เท่านั้น ห้ามมีข้อความอื่นนอก JSON ห้ามใช้ markdown
+
+โครงสร้าง JSON ที่ต้องส่งกลับ:
+{
+  "chapter": 1,
+  "nodes": [
+    {
+      "id": "c1_start",
+      "type": "story",
+      "title": "ชื่อฉากสั้นๆ",
+      "location": "สถานที่ปัจจุบัน",
+      "time": "08:30",
+      "text": "คำบรรยายฉากภาษาไทยที่เห็นภาพชัดเจน มีบทพูดตัวละคร บรรยากาศ และสถานการณ์ตรงหน้า (ยาว 4-6 ประโยค ห้ามตัดสินใจแทนผู้เล่น)",
+      "effects": {
+        "hp": 0,
+        "mp": 0,
+        "money": 0,
+        "items_add": [],
+        "items_remove": [],
+        "skills_add": [],
+        "clues_add": []
+      },
+      "choices": [
+        {"text": "ตัวเลือกการกระทำที่ 1", "next": "c1_n2"},
+        {"text": "ไขตู้ลับด้วยไอเท็มกุญแจ", "next": "c1_secret", "req_item": "ชื่อไอเท็มกุญแจ", "consume_item": false},
+        {"text": "ซื้อข่าวจากสายสืบ (50 เงิน)", "next": "c1_info", "req_money": 50}
+      ]
+    }
+  ]
+}
+
+ประเภทของ node ("type") ทั้ง 4 แบบ:
+1) "story" — ฉากเนื้อเรื่องปกติ มี choices 2-4 ข้อ:
+   - ตัวเลือกที่ใช้ไอเท็มเงื่อนไข: ใส่ "req_item": "ชื่อไอเท็มตรงตาม Blueprint เป๊ะ" ("consume_item": false หรือ true)
+   - ตัวเลือกใช้เงิน: ใส่ "req_money": จำนวนเงิน
+   - ต้องมีอย่างน้อย 2 ตัวเลือกปกติที่ไม่ติดเงื่อนไขเสมอ!
+
+2) "combat" — ฉากต่อสู้ Turn-based (มี 1-2 ฉากต่อบท):
+   ใส่ฟิลด์ "combat" แทน choices:
+   "combat": {
+     "enemy": "ชื่อศัตรู",
+     "group": false,
+     "tough": "คนธรรมดา | ฝึกมา | แข็งแกร่ง | เหนือมนุษย์ | ระดับตำนาน",
+     "max_hp_scale": 100,
+     "atk_dc": 12,
+     "enemy_dmg": 15,
+     "enemy_moves": ["พุ่งเข้าโจมตีอย่างแรง", "จู่โจมสวนกลับที่จุดอ่อน"],
+     "part_debuffs": ["แขนชะงัก โจมตีเบาลง", "ขาบาดเจ็บ เคลื่อนไหวช้าลง"],
+     "can_flee": true,
+     "win_next": "ไอดีฉากเมื่อชนะ",
+     "flee_next": "ไอดีฉากเมื่อหนีรอด"
+   }
+   - ศัตรูทั่วไป max_hp_scale 80-110 (enemy_dmg 10-15), รองบอส 130-160 (dmg 16-20), บอสใหญ่ 185-230 (dmg 20-26)
+   - ฉาก win_next ควรแจกรางวัลสมเหตุสมผลใน effects (เงิน, ยาฟื้นฟู [usable:hp:35], อาวุธ [combat_dmg:40], หรือสกิลใหม่ใน skills_add: [{"name":"ชื่อท่า","kind":"สกิล","cost":"12","limit":"คำอธิบาย","note":"รายละเอียด [power:38]"}])
+
+3) "input" — ฉากพิเศษให้ผู้เล่น "พิมพ์ข้อความตอบเอง" (มีบทละ 1 ฉาก เช่น เจรจา/ไขรหัส/วางแผน):
+   "input_prompt": "คำถามหรือสถานการณ์ที่ให้ผู้เล่นพิมพ์คำพูดหรือการกระทำสั้นๆ",
+   "branches": [
+     {"condition": "พูดโน้มน้าวมีเหตุผล อ้างหลักฐาน หรือแก้ปัญหาตรงจุด", "next": "ไอดีฉากสำเร็จ"},
+     {"condition": "ข่มขู่ ใช้กำลัง หรือยั่วยุ", "next": "ไอดีฉากปะทะ"},
+     {"condition": "คำตอบทั่วไปอื่นๆ", "next": "ไอดีฉากปกติ"}
+   ],
+   "choices": [{"text": "เลือกตอบตามสัญชาตญาณ (กรณีไม่พิมพ์เอง)", "next": "ไอดีฉากปกติ"}]
+
+4) "ending" — (ใช้ในบทที่ 5 เท่านั้น สำหรับฉากจบทั้ง 5 ฉาก end_1 ถึง end_5):
+   "id": "end_1", "type": "ending", "ending_rank": "True Ending", "title": "ชื่อฉากจบ", "location": "...", "time": "...",
+   "text": "บทสรุปฉากจบอย่างละเอียดและประทับใจ (6-9 ประโยค)", "choices": []
+
+กฎเหล็กของการผูกกราฟฉาก:
+1. จำนวนฉากในบทนี้: **11 ถึง 12 ฉาก** (สำหรับบทที่ 5 ให้มีฉากเนื้อเรื่อง/บอส 9-10 ฉาก + ฉากจบ ending ทั้ง 5 ฉาก = 14-15 ฉาก)
+2. ต้องมีฉากเริ่มต้นครบทุก ID ที่ระบุใน entry_nodes ของบทนี้! และตั้ง ID ฉากอื่นในบทนี้ให้ขึ้นต้นด้วย "c{เลขบท}_" เพื่อไม่ให้ซ้ำกับบทอื่น
+3. ทุกค่า next / win_next / flee_next / branches[].next ต้องชี้ไปยัง ID ที่มีอยู่จริงในบทนี้ หรือ ID ใน exit_targets ของบทนี้เท่านั้น!
+4. แจกไอเท็ม key_items ที่ obtained_in_chapter ตรงกับบทนี้ใน effects.items_add และสร้างตัวเลือก req_item สำหรับไอเท็มที่ used_in_chapter ตรงกับบทนี้!`;
+
+
+const STORY_EVAL_INPUT_PROMPT = `คุณคือผู้ตัดสินฉากพิเศษของเกม RPG Gamebook
+ผู้เล่นอยู่ในฉากที่ต้องพิมพ์คำพูดหรือการกระทำเอง จงอ่าน [สถานการณ์ของฉาก], [สิ่งที่ผู้เล่นพิมพ์] และ [ตัวเลือกเส้นทางที่เป็นไปได้ (branches)]
+แล้วเลือก index ของ branch ที่ตรงกับการกระทำหรือคำพูดของผู้เล่นมากที่สุด พร้อมแต่งข้อความบรรยายผลลัพธ์ช่วงสั้นๆ (2-3 ประโยค) ก่อนตัดเข้าฉากถัดไป
+ตอบเป็น JSON เท่านั้น:
+{"branch_index": 0, "transition_text": "ปฏิกิริยาของ NPC หรือผลที่เกิดขึ้นสั้นๆ 2-3 ประโยค"}`;
+
+
+// ---------- ล็อกระดับเสี้ยววินาทีเฉพาะจังหวะเขียนลง Google Sheet (ทำให้ AI 4-5 ตัวรันขนานพร้อมกันได้ 100%!) ----------
+function withSheetWriteLock_(fn) {
+  const sl = LockService.getScriptLock();
+  sl.waitLock(25000);
+  try {
+    return fn();
+  } finally {
+    sl.releaseLock();
+  }
+}
+
+function ensureStorySheets_() {
+  const ss = ss_();
+  let sb = ss.getSheetByName('StoryBook');
+  if (!sb) {
+    sb = ss.insertSheet('StoryBook');
+    sb.appendRow(['Key', 'JSON']);
+  }
+  let sv = ss.getSheetByName('StorySave');
+  if (!sv) {
+    sv = ss.insertSheet('StorySave');
+    sv.appendRow(['Key', 'JSON']);
+  }
+  return { book: sb, save: sv };
+}
+
+function setSheetKvSafe_(sheetName, key, obj) {
+  const jsonStr = JSON.stringify(obj);
+  withSheetWriteLock_(function () {
+    ensureStorySheets_();
+    upsert_(sheetName, key, jsonStr);
+  });
+}
+
+function getSheetKv_(sheetName, key) {
+  const ss = ss_();
+  const sh = ss.getSheetByName(sheetName);
+  if (!sh || sh.getLastRow() < 2) return null;
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]).trim() === key) {
+      try { return JSON.parse(String(rows[i][1]).trim()); } catch (e) { return null; }
+    }
+  }
+  return null;
+}
+
+function getGameMode_() {
+  return pp_().getProperty('GAME_MODE') || 'sandbox';
+}
+
+function loadFullStoryBook_() {
+  const ss = ss_();
+  const sh = ss.getSheetByName('StoryBook');
+  if (!sh || sh.getLastRow() < 2) return null;
+
+  const rows = sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues();
+  const kv = {};
+  for (let i = 0; i < rows.length; i++) {
+    const k = String(rows[i][0] || '').trim();
+    if (k) kv[k] = String(rows[i][1] || '').trim();
+  }
+
+  if (!kv['blueprint']) return null;
+  let bp;
+  try { bp = JSON.parse(kv['blueprint']); } catch (e) { return null; }
+
+  const nodes = {};
+  const chaptersLoaded = [];
+  for (let c = 1; c <= STORY_CHAPTERS; c++) {
+    if (!kv['chapter_' + c]) continue;
+    try {
+      const ch = JSON.parse(kv['chapter_' + c]);
+      if (ch && Array.isArray(ch.nodes) && ch.nodes.length) {
+        chaptersLoaded.push(c);
+        ch.nodes.forEach(function (n) {
+          if (n && n.id) {
+            n.chapter = c;
+            nodes[n.id] = n;
+          }
+        });
+      }
+    } catch (e) {}
+  }
+
+  return {
+    title: bp.title || 'การผจญภัยครั้งใหม่',
+    world_summary: bp.world_summary || '',
+    initial_hud: bp.initial_hud || null,
+    endings: bp.endings || [],
+    chapters_meta: (bp.chapters || []).map(function (c) { return { chapter: c.chapter, title: c.title }; }),
+    chapters_total: STORY_CHAPTERS,
+    chapters_ready: chaptersLoaded.length,
+    chapters_loaded: chaptersLoaded,
+    start_node: (bp.chapters && bp.chapters[0] && bp.chapters[0].entry_nodes && bp.chapters[0].entry_nodes[0])
+      ? bp.chapters[0].entry_nodes[0].id : 'c1_start',
+    nodes: nodes
+  };
+}
+
+function loadStorySaveData_() {
+  return getSheetKv_('StorySave', 'state') || null;
+}
+
+
+// ---------- API 1: สร้าง Blueprint โครงเรื่องใหญ่ (ใช้โมเดลตัวฉลาด + สุ่มเมล็ดพันธุ์กันซ้ำ!) ----------
+function storyInitBlueprint(req) {
+  try {
+    init_(req.code);
+    const rawWorld = hs_(req.worldConcept, 1500);
+    const rawChar = hs_(req.charConcept, 1500);
+
+    // เตรียมชีตใหม่เมื่อกดเริ่มสร้างครั้งแรก (ล็อกสั้นๆ เฉพาะตอนเตรียมชีต)
+    if (!req.isRetry) {
+      withSheetWriteLock_(function () {
+        newGame(req.code, '');
+        pp_().setProperty('GAME_MODE', 'story');
+        ensureStorySheets_();
       });
-  }
-
-  var CODE_RE = /^[A-Za-z0-9\-]{6,40}$/;
-  var code = '';
-  var apiKey = '';
-  try { code = localStorage.getItem('rpg_code') || ''; } catch (e) {}
-  try { apiKey = localStorage.getItem('rpg_key') || ''; } catch (e) {}
-  var fromLink = '';
-  try { fromLink = decodeURIComponent((location.hash || '').replace(/^#/, '')); } catch (e) {}
-  if (CODE_RE.test(fromLink)) code = fromLink;
-
-  var memBusy = false;
-  var queuedText = '';
-
-  function syncMemory(done) {
-    memBusy = true;
-    if (!sendBtn.disabled) statusEl.textContent = '💾 กำลังบันทึกความจำ... (พิมพ์ต่อได้ ระบบจะส่งให้เมื่อเสร็จ)';
-    api('memory', { code: code, key: apiKey })
-      .then(function (res) {
-        if (res && res.more) { syncMemory(done); return; }
-        var warn = '';
-        if (res && !res.ok && !res.busy) {
-          warn = '⚠️ บันทึกความจำไม่สำเร็จ (จะลองใหม่รอบถัดไป): ' + res.error;
-        }
-        memBusy = false;
-        done(warn);
-      })
-      .catch(function (err) { memBusy = false; done('⚠️ บันทึกความจำไม่สำเร็จ: ' + err.message); });
-  }
-
-  function finishSync(warn) {
-    setBusy(false);
-    statusEl.textContent = warn || '';
-    if (queuedText) {
-      var q = queuedText;
-      queuedText = '';
-      sendText(q);
-    }
-  }
-
-  var gameMode = 'sandbox';   // 'sandbox' | 'story'
-
-  // c ว่าง = สร้างผู้เล่นใหม่, มีรหัส = เล่นต่อ แล้วโหลดบทสนทนาเก่า
-  function boot(c) {
-    setBusy(true, 'กำลังโหลด...');
-    api('start', { code: c })
-      .then(function (res) {
-        if (!res.ok) { askCode('⚠️ ' + res.error); return; }
-        code = res.code;
-        try { localStorage.setItem('rpg_code', code); } catch (e) {}
-        try { history.replaceState(null, '', '#' + code); } catch (e) {}
-
-        if (res.mode === 'story') {
-          enterStoryMode(res.storyBook, res.storySave);
-          setBusy(false);
-          return;
-        }
-
-        exitStoryModeUI();
-        setHud(res.hud || null);
-        chat.innerHTML = '';
-        res.history.forEach(function (r) { add(r.role, r.text); });
-        curChoices = { list: res.choices || [], panel: !!res.panel };
-        renderChoices();
-        applyStage(res.stage, true);
-        setBusy(false);
-        syncMemory(finishSync);     // ตอนเปิดหน้า ตามความจำให้ทันของที่ค้างอยู่
-      })
-      .catch(function (err) { setBusy(false); add('model', '⚠️ ' + err.message); });
-  }
-
-  var codeModal = document.getElementById('codeModal');
-  function askCode(msg) {
-    setBusy(false);
-    document.getElementById('codeMsg').textContent = msg ||
-      ('รหัสผู้เล่นตอนนี้: ' + code + '\nจดรหัสนี้ไว้ หรือกดปุ่ม 🔗 ลิงก์เซฟ เก็บเป็นบุ๊กมาร์ก เพื่อเล่นต่อบนเครื่องอื่น');
-    document.getElementById('codeInput').value = '';
-    document.getElementById('keyInput').value = apiKey;
-    codeModal.style.display = 'flex';
-  }
-
-  // บันทึกคีย์ที่กรอก (ต้องมีคีย์ก่อนเริ่มเล่น)
-  function saveKey() {
-    var k = document.getElementById('keyInput').value.trim();
-    if (!k) { document.getElementById('codeMsg').textContent = '⚠️ กรุณาใส่ Gemini API key ก่อน'; return false; }
-    apiKey = k;
-    try { localStorage.setItem('rpg_key', apiKey); } catch (e) {}
-    return true;
-  }
-
-  document.getElementById('entercode').addEventListener('click', function () { askCode(); });
-  document.getElementById('copylink').addEventListener('click', function () {
-    if (!code) { statusEl.textContent = 'ยังไม่มีรหัสผู้เล่น'; return; }
-    var link = location.href.split('#')[0] + '#' + code;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(link).then(function () {
-        statusEl.textContent = '✅ คัดลอกลิงก์เซฟแล้ว เก็บเป็นบุ๊กมาร์กไว้ได้ (ใครมีลิงก์นี้ก็เล่นเซฟนี้ได้)';
-      }, function () { window.prompt('คัดลอกลิงก์นี้:', link); });
     } else {
-      window.prompt('คัดลอกลิงก์นี้:', link);
-    }
-  });
-  document.getElementById('codeGo').addEventListener('click', function () {
-    if (!saveKey()) return;
-    var c = document.getElementById('codeInput').value.trim() || code;
-    if (!c) { document.getElementById('codeMsg').textContent = '⚠️ ใส่รหัสผู้เล่น หรือกดสร้างผู้เล่นใหม่'; return; }
-    codeModal.style.display = 'none';
-    boot(c);
-  });
-  document.getElementById('codeNew').addEventListener('click', function () {
-    if (!saveKey()) return;
-    codeModal.style.display = 'none';
-    boot('');
-  });
-
-  if (code && apiKey) boot(code);
-  else if (code) askCode('พบรหัสผู้เล่นของคุณแล้ว (' + code + ')\nใส่ Gemini API key ของคุณ แล้วกด "เข้าด้วยรหัสนี้" เพื่อเล่นต่อ');
-  else askCode('ยินดีต้อนรับ ใส่ Gemini API key ของคุณ แล้วใส่รหัสผู้เล่นเดิม หรือกดสร้างผู้เล่นใหม่');
-
-  function sendText(text) {
-    if (gameMode === 'story') { handleStoryFreeText(text); return; }
-    text = String(text || '').trim();
-    if (!text || sendBtn.disabled) return;
-    if (memBusy) {                       // กำลังบันทึกความจำอยู่ รอคิวแล้วส่งให้เอง
-      if (queuedText) return;
-      queuedText = text;
-      statusEl.textContent = '⏳ รอบันทึกความจำให้เสร็จ แล้วจะส่งให้อัตโนมัติ: ' + text.slice(0, 40);
-      return;
-    }
-    add('user', text);
-    setBusy(true, 'กำลังคิด...');
-    api('turn', { code: code, text: text, key: apiKey })
-      .then(function (res) {
-        if (res.ok) {
-          curChoices = { list: res.choices || [], panel: !!res.panel };
-          add('model', res.text);
-          if (res.hud !== undefined) setHud(res.hud, res.hudEvents);
-          renderChoices();
-          showSkillPopups(res.skillEvents);
-          if (res.memPending) syncMemory(finishSync);   // ตอบผู้เล่นก่อน ถึงรอบแล้วค่อยบันทึกความจำเบื้องหลัง
-          else setBusy(false);
-        } else {
-          add('model', '⚠️ ' + res.error);
-          renderChoices();          // คืนปุ่มตัวเลือกเดิม (ข้อความนี้ยังไม่ถูกบันทึก)
-          setBusy(false);
-        }
-      })
-      .catch(function (err) {
-        setBusy(false);
-        add('model', '⚠️ ' + err.message + '\n(ข้อความนี้ยังไม่ถูกบันทึก ลองส่งใหม่ได้)');
-        renderChoices();
+      withSheetWriteLock_(function () {
+        pp_().setProperty('GAME_MODE', 'story');
+        ensureStorySheets_();
       });
-  }
-
-  function send() {
-    var t = input.value;
-    if (!t.trim() || sendBtn.disabled) return;
-    input.value = '';
-    sendText(t);
-  }
-  sendBtn.addEventListener('click', send);
-
-  // ---------- แผง HUD (ข้อมูลมาจากเซิร์ฟเวอร์ โค้ดเป็นคนถือตัวเลขจริง) ----------
-  var hud = null;
-  var hudTab = 'overview';
-  var META_LABELS = { location: '📍 สถานที่', date: '📅 วันที่', time: '🕐 เวลา', weather: '🌤️ อากาศ', goal: '🎯 เป้าหมาย' };
-  var BAR_COLORS = { hp: '#e5484d', mp: '#3b82f6', stamina: '#22c55e', sp: '#22c55e' };
-  var BAR_PALETTE = ['#e5484d', '#3b82f6', '#22c55e', '#f59e0b', '#a855f7', '#14b8a6', '#ec4899', '#94a3b8'];
-
-  function mk(tag, cls, text) {
-    var e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (text != null) e.textContent = text;
-    return e;
-  }
-  function barColor(b, i) { return BAR_COLORS[b.key] || BAR_PALETTE[i % BAR_PALETTE.length]; }
-  function barPct(b) { return Math.max(0, Math.min(100, b.max ? (b.cur / b.max) * 100 : 0)); }
-  function findBar(h, key) { return h && h.bars.filter(function (x) { return x.key === key; })[0]; }
-
-  function setHud(newHud, events) {
-    var old = hud;
-    hud = newHud || null;
-    renderHudBar(old);
-    renderEnemyBar(old);
-    if (document.getElementById('hudModal').style.display === 'flex') renderHudPanel();
-    if (events && events.length) toast(events);
-  }
-
-  function enemyPct(c) { return Math.max(0, Math.min(100, c && c.hp != null ? c.hp : 100)); }
-  function enemyColor(p) { return p > 60 ? '#22c55e' : (p > 30 ? '#f59e0b' : '#e5484d'); }
-
-  function renderEnemyBar(old) {
-    var el = document.getElementById('enemybar');
-    el.innerHTML = '';
-    var c = hud && hud.combat;
-    if (!c) { el.style.display = 'none'; return; }
-    el.style.display = 'block';
-    var p = enemyPct(c);
-    var pp = (old && old.combat && old.combat.enemy === c.enemy) ? enemyPct(old.combat) : p;
-    var head = mk('div', 'en-t');
-    head.appendChild(mk('span', '', '⚔️ ' + (c.enemy || 'ศัตรู') + (c.group ? ' (กลุ่ม)' : '') + (p <= 0 ? ' — ล้มแล้ว' : '')));
-    var sub = [c.range, c.note].filter(Boolean).join(' · ');
-    if (sub) head.appendChild(mk('small', '', sub));
-    el.appendChild(head);
-    var track = mk('div', 'hb-track');
-    var fill = mk('div', 'hb-fill');
-    fill.style.background = enemyColor(p);
-    fill.style.width = pp + '%';
-    track.appendChild(fill);
-    el.appendChild(track);
-    if (pp !== p) requestAnimationFrame(function () { fill.style.width = p + '%'; });
-    if (c.debuffs && c.debuffs.length) {
-      var chips = mk('div', 'en-chips');
-      c.debuffs.forEach(function (d) {
-        chips.appendChild(mk('span', 'dchip', (d.part ? d.part + ': ' : '') + (d.text || '')));
-      });
-      el.appendChild(chips);
     }
-  }
 
-  function renderHudBar(old) {
-    var bar = document.getElementById('hudbar');
-    bar.innerHTML = '';
-    if (!hud) { bar.style.display = 'none'; return; }
-    bar.style.display = 'flex';
-    hud.bars.forEach(function (b, i) {
-      var prev = findBar(old, b.key);
-      var box = mk('div', 'hb');
-      box.appendChild(mk('div', 'hb-t', (b.icon ? b.icon + ' ' : '') + b.label + ' ' + b.cur + '/' + b.max));
-      var track = mk('div', 'hb-track');
-      var fill = mk('div', 'hb-fill');
-      fill.style.background = barColor(b, i);
-      fill.style.width = (prev ? barPct(prev) : barPct(b)) + '%';
-      track.appendChild(fill);
-      box.appendChild(track);
-      bar.appendChild(box);
-      if (prev && prev.cur !== b.cur) {
-        box.classList.add(b.cur < prev.cur ? 'down' : 'up');
-        requestAnimationFrame(function () { fill.style.width = barPct(b) + '%'; });
+    const seedDirective = buildCreativeEntropySeed_(rawWorld, rawChar);
+    const userMsg = '[แนวเรื่อง / โลกที่ผู้เล่นต้องการ]\n' + (rawWorld || 'สุ่มโลกผจญภัยแนวใหม่ที่ไม่ซ้ำใคร') +
+      '\n\n[แนวตัวละครเอกที่ผู้เล่นต้องการ]\n' + (rawChar || 'สุ่มตัวละครเอกที่มีเอกลักษณ์และชื่อไม่ซ้ำใคร') +
+      seedDirective +
+      '\nจงออกแบบ Blueprint ความยาว 5 บท (รวม 55+ ฉาก) และ 5 ฉากจบ ตามโครงสร้าง JSON ที่กำหนด';
+
+    // ใช้สระ creative_blueprint (Gemini 3.8 Flash -> Groq 120B -> 3.6 Flash สลับอัตโนมัติ!)
+    const raw = callSmartAI_('creative_blueprint', STORY_BLUEPRINT_PROMPT, [], userMsg, true, req.key);
+    let bp;
+    try { bp = hudParse_(raw); } catch (e) { throw new Error('AI สร้างโครงเรื่องผิดรูปแบบ JSON ระบบกำลังลองใหม่...'); }
+    if (!bp || !Array.isArray(bp.chapters) || bp.chapters.length < STORY_CHAPTERS) {
+      throw new Error('โครงเรื่องไม่ครบ 5 บท ระบบกำลังลองใหม่...');
+    }
+
+    const cleanHud = normalizeHud_(bp.initial_hud || {});
+    bp.initial_hud = cleanHud;
+
+    // จดจำชื่อเรื่องและชื่อตัวละครไว้กันซ้ำในเกมถัดไปของผู้เล่นคนนี้
+    let charName = '';
+    const charSec = (cleanHud.sections || []).filter(function (s) { return s.key === 'character'; })[0];
+    if (charSec && charSec.items && charSec.items[0]) charName = charSec.items[0].v || '';
+    rememberStoryTheme_(bp.title, charName);
+
+    setSheetKvSafe_('StoryBook', 'blueprint', bp);
+    withSheetWriteLock_(function () {
+      setWorld_('=== STORY MODE: ' + (bp.title || '') + ' ===\n' + (bp.world_summary || ''));
+    });
+
+    return {
+      ok: true,
+      title: bp.title,
+      world_summary: bp.world_summary,
+      chapters: bp.chapters.map(function (c) { return { chapter: c.chapter, title: c.title }; })
+    };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+
+// ---------- ซ่อมกราฟฉากของบทอัตโนมัติ (กันลิงก์ขาดหรือฉากตัน) ----------
+function sanitizeChapterNodes_(chapterNum, rawNodes, bp) {
+  const chMeta = (bp.chapters || []).filter(function (c) { return Number(c.chapter) === chapterNum; })[0] || {};
+  const entries = (chMeta.entry_nodes || []).map(function (e) { return e.id; }).filter(Boolean);
+  const exits = (chMeta.exit_targets || []).map(function (e) { return e.id; }).filter(Boolean);
+  const defaultExit = exits[0] || (chapterNum < STORY_CHAPTERS ? 'c' + (chapterNum + 1) + '_main' : 'end_1');
+
+  const list = (Array.isArray(rawNodes) ? rawNodes : []).filter(function (n) { return n && n.id; });
+  if (!list.length) throw new Error('บทที่ ' + chapterNum + ' ไม่มีฉากถูกส่งกลับมา');
+
+  entries.forEach(function (eid, idx) {
+    if (!list.some(function (n) { return n.id === eid; })) {
+      if (idx === 0 && list[0] && list[0].type !== 'ending') {
+        list[0].id = eid;
+      } else if (list[0]) {
+        const firstRealId = list[0].id;
+        list.unshift({
+          id: eid,
+          type: 'story',
+          title: chMeta.title || ('บทที่ ' + chapterNum),
+          location: list[0].location || '',
+          time: list[0].time || '',
+          text: list[0].text || 'คุณเดินทางมาถึงจุดหมายถัดไป...',
+          effects: {},
+          choices: [{ text: 'เดินหน้าต่อ', next: firstRealId }]
+        });
+      }
+    }
+  });
+
+  if (chapterNum === STORY_CHAPTERS && Array.isArray(bp.endings)) {
+    bp.endings.forEach(function (ed) {
+      if (!ed || !ed.id) return;
+      if (!list.some(function (n) { return n.id === ed.id; })) {
+        list.push({
+          id: ed.id,
+          type: 'ending',
+          ending_rank: ed.rank || 'Ending',
+          title: ed.title || 'บทสรุปของการเดินทาง',
+          location: '',
+          time: '',
+          text: ed.summary || 'การเดินทางของคุณได้มาถึงบทสรุปแล้ว',
+          choices: []
+        });
       }
     });
-    hud.counters.forEach(function (c) { bar.appendChild(mk('div', 'hc', (c.icon ? c.icon + ' ' : '') + c.value)); });
-    bar.appendChild(mk('div', 'hc', 'T' + hud.turn));
-    bar.appendChild(mk('div', 'hmenu', '☰'));
   }
 
-  function renderHudPanel() {
-    var tabs = document.getElementById('hudTabs');
-    var body = document.getElementById('hudBody');
-    tabs.innerHTML = '';
-    body.innerHTML = '';
-    if (!hud) {
-      body.appendChild(mk('div', 'hnote', 'ยังไม่มีข้อมูลสถานะ (เริ่มเกมและยืนยันตัวละครก่อน)'));
-      return;
+  const validIds = {};
+  list.forEach(function (n) { validIds[n.id] = true; });
+  exits.forEach(function (id) { validIds[id] = true; });
+
+  const fixTarget = function (targetId, idxInList, selfId) {
+    if (targetId && targetId !== selfId && validIds[targetId]) return targetId;
+    for (let j = idxInList + 1; j < list.length; j++) {
+      if (list[j].type !== 'ending' && list[j].id !== selfId) return list[j].id;
     }
-    var list = [{ key: 'overview', label: '🎮 ภาพรวม' }].concat(
-      hud.sections.map(function (s) { return { key: s.key, label: s.label }; }));
-    if (!list.some(function (t) { return t.key === hudTab; })) hudTab = 'overview';
-    list.forEach(function (t) {
-      var b = mk('button', 'htab' + (t.key === hudTab ? ' on' : ''), t.label);
-      b.addEventListener('click', function () { hudTab = t.key; renderHudPanel(); });
-      tabs.appendChild(b);
-    });
-    if (hudTab === 'overview') renderOverview(body);
-    else renderSection(body, hud.sections.filter(function (s) { return s.key === hudTab; })[0]);
-  }
-
-  function row(left, right, note) {
-    var r = mk('div', 'hrow');
-    var l = mk('div', '', left);
-    if (note) l.appendChild(mk('small', '', note));
-    r.appendChild(l);
-    if (right != null && right !== '') r.appendChild(mk('b', '', right));
-    return r;
-  }
-
-  function renderOverview(body) {
-    Object.keys(hud.meta).forEach(function (k) {
-      body.appendChild(row(META_LABELS[k] || k, hud.meta[k]));
-    });
-    hud.bars.forEach(function (b, i) {
-      var box = mk('div', 'hb hbig');
-      box.appendChild(mk('div', 'hb-t', (b.icon ? b.icon + ' ' : '') + b.label + '  ' + b.cur + ' / ' + b.max));
-      var track = mk('div', 'hb-track');
-      var fill = mk('div', 'hb-fill');
-      fill.style.background = barColor(b, i);
-      fill.style.width = barPct(b) + '%';
-      track.appendChild(fill);
-      box.appendChild(track);
-      body.appendChild(box);
-    });
-    hud.counters.forEach(function (c) {
-      body.appendChild(row((c.icon ? c.icon + ' ' : '') + c.label, String(c.value)));
-    });
-    if (hud.combat) {
-      var cb = mk('div', 'hcombat');
-      var dbs = (hud.combat.debuffs || []).map(function (d) { return (d.part ? d.part + ': ' : '') + (d.text || ''); });
-      cb.textContent = '⚔️ การต่อสู้: ' + [hud.combat.enemy, hud.combat.range, hud.combat.note].filter(Boolean).join(' | ') +
-        (dbs.length ? '\nบาดแผล/ผลที่ศัตรูได้รับ: ' + dbs.join(' ; ') : '');
-      cb.style.whiteSpace = 'pre-wrap';
-      body.appendChild(cb);
-    }
-    body.appendChild(mk('div', 'hnote', 'Turn ที่เล่นแล้ว: ' + hud.turn));
-  }
-
-  function skillLines(r) {
-    var L = [];
-    if (r.kind) L.push(r.kind);
-    L.push(r.status === 'training' ? 'ฝึกแล้ว ' + r.progress + '% (ยังไม่ปลดล็อก)' : 'ความคืบหน้าเลเวลถัดไป ' + r.progress + '%');
-    if (r.cost) L.push('ต้นทุน: ' + r.cost);
-    if (r.limit) L.push('ข้อจำกัด: ' + r.limit);
-    if (r.note) L.push(r.note);
-    return L;
-  }
-
-  function skillRow(r) {
-    var wrap = mk('div', 'hrow');
-    var left = mk('div', '', r.name);
-    left.style.flex = '1';
-    skillLines(r).forEach(function (t) { left.appendChild(mk('small', '', t)); });
-    if (r.risk) left.appendChild(mk('small', 'skrisk', '⚠️ ความเสี่ยง: ' + r.risk));
-    var track = mk('div', 'hb-track');
-    var fill = mk('div', 'hb-fill sk-fill' + (r.status === 'training' ? ' train' : ''));
-    fill.style.width = Math.max(0, Math.min(100, r.progress || 0)) + '%';
-    track.appendChild(fill);
-    left.appendChild(track);
-    wrap.appendChild(left);
-    wrap.appendChild(mk('b', '', r.status === 'training' ? '🔸 กำลังฝึก' : 'Lv' + r.level));
-    return wrap;
-  }
-
-  function renderSection(body, sec) {
-    if (!sec) return;
-    if (!sec.items.length) { body.appendChild(mk('div', 'hnote', '(ว่าง)')); return; }
-    sec.items.forEach(function (r) {
-      if (sec.type === 'skills') body.appendChild(skillRow(r));
-      else if (sec.type === 'fields') body.appendChild(row(r.k, r.v));
-      else if (sec.type === 'items') body.appendChild(row(r.name, '×' + r.qty, r.note));
-      else body.appendChild(row(r.name, '', r.note));
-    });
-  }
-
-  var toastTimer = null;
-  function toast(lines) {
-    var t = document.getElementById('toast');
-    t.innerHTML = '';
-    lines.forEach(function (l) { t.appendChild(mk('div', '', l)); });
-    t.style.display = 'block';
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.style.display = 'none'; }, 4500);
-  }
-
-  document.getElementById('hudbar').addEventListener('click', function () {
-    renderHudPanel();
-    document.getElementById('hudModal').style.display = 'flex';
-  });
-  document.getElementById('hudClose').addEventListener('click', function () {
-    document.getElementById('hudModal').style.display = 'none';
-  });
-
-  var CMDS = [
-    ['/status', 'สถานะ'], ['/character', 'ตัวละคร'], ['/inventory', 'ของ'], ['/skills', 'สกิล'],
-    ['/spells', 'เวท'], ['/relations', 'ความสัมพันธ์'], ['/quests', 'เควสต์'], ['/goal', 'เป้าหมาย'],
-    ['/power', 'พลัง'], ['/money', 'เงิน'], ['/recap', 'สรุปเรื่อง'], ['/world', 'โลก'],
-    ['/rules', 'กฎ'], ['/help', 'ช่วยเหลือ'], ['/save', 'เซฟ'], ['/load', 'โหลด'], ['/ooc', 'คุยนอกเกม']
-  ];
-  var cmdModal = document.getElementById('cmdModal');
-  var cmdGrid = document.getElementById('cmdGrid');
-  CMDS.forEach(function (c) {
-    var b = document.createElement('button');
-    b.textContent = c[0] + ' ' + c[1];
-    b.addEventListener('click', function () {
-      cmdModal.style.display = 'none';
-      if (c[0] === '/ooc') { input.value = '/ooc '; input.focus(); }
-      else sendText(c[0]);
-    });
-    cmdGrid.appendChild(b);
-  });
-  document.getElementById('cmdbtn').addEventListener('click', function () { cmdModal.style.display = 'flex'; });
-  document.getElementById('cmdClose').addEventListener('click', function () { cmdModal.style.display = 'none'; });
-
-  var modal = document.getElementById('modal');
-  document.getElementById('newgame').addEventListener('click', function () { modal.style.display = 'flex'; });
-  document.getElementById('cancel').addEventListener('click', function () { modal.style.display = 'none'; });
-
-  Array.prototype.forEach.call(document.querySelectorAll('.choice[data-preset]'), function (btn) {
-    btn.addEventListener('click', function () {
-      modal.style.display = 'none';
-      var preset = btn.getAttribute('data-preset');
-      setBusy(true, 'กำลังสร้างเกมใหม่...');
-      api('newgame', { code: code, preset: preset })
-        .then(function (res) {
-          if (!res.ok) { add('model', '⚠️ ' + res.error); setBusy(false); return; }
-          chat.innerHTML = '';
-          exitStoryModeUI();
-          setHud(null);
-          setup.fields = [];
-          curChoices = { list: [], panel: false };
-          lastModelText = '';
-          add('model', preset === 'magic'
-            ? 'เริ่มเกมใหม่ (โลกโรงเรียนเวทมนตร์) กรอกฟอร์มสร้างตัวละครได้เลย (ถ้าฟอร์มปิดไป กดปุ่ม 📝 ฟอร์มด้านบน)'
-            : 'เริ่มเกมใหม่ ออกแบบโลกในฟอร์มที่เปิดขึ้น (ถ้าฟอร์มปิดไป กดปุ่ม 📝 ฟอร์มด้านบน)');
-          setBusy(false);
-          applyStage(res.stage, true);
-        })
-        .catch(function (err) { add('model', '⚠️ ' + err.message); setBusy(false); });
-    });
-  });
-
-  // ---------- ฟอร์มออกแบบโลก & สร้างตัวละคร ----------
-  var setup = { kind: null, fields: [], stage: 'playing', busy: false };
-  var setupModal = document.getElementById('setupModal');
-
-  var SETUP_TEXT = {
-    world: {
-      title: '🌍 ออกแบบโลก',
-      intro: 'พิมพ์แนวโลกที่อยากเล่น แล้วกด ✨ ให้ AI ร่าง (หรือ 🎲 สุ่มทั้งหมด) แก้ได้ทุกช่อง ' +
-             'ช่อง 10 คือช่องที่จะโผล่ในฟอร์มสร้างตัวละครขั้นต่อไป เมื่อกดยืนยันโลกจะถูกล็อก',
-      conceptLabel: 'แนวโลก / ธีม / บรรยากาศ (หรือคำสั่งแก้ เช่น "เพิ่มระบบเงิน")',
-      conceptHint: 'เช่น โลกหลังวันสิ้นโลกที่ซอมบี้ครองเมือง เน้นเอาตัวรอด',
-      ok: '✅ ยืนยันโลก'
-    },
-    char: {
-      title: '🎮 สร้างตัวละคร',
-      intro: 'AI ร่างตัวละครให้แล้ว แก้ได้ทุกช่อง 🎲 ข้างช่อง = ให้ AI ร่างช่องนั้นใหม่ ' +
-             'ช่องที่พิมพ์ "สุ่ม" GM จะสร้างให้และเก็บความลับไว้ ช่องที่มี * ต้องกรอก',
-      conceptLabel: 'แนวตัวละครคร่าว ๆ หรือคำสั่งแก้ (กด ✨ ร่างใหม่ตามนี้)',
-      conceptHint: 'เช่น นักเวทสาวขี้อาย แต่ฝีมือดี / เปลี่ยนจุดอ่อนให้ดูน่าสนใจกว่านี้',
-      ok: '✅ ยืนยันตัวละครและเริ่มเกม'
-    }
+    return defaultExit;
   };
 
-  function setupMsg(t) { document.getElementById('setupMsg').textContent = t || ''; }
+  list.forEach(function (n, idx) {
+    n.id = String(n.id).trim();
+    n.chapter = chapterNum;
+    n.type = ['story', 'combat', 'input', 'ending'].indexOf(n.type) >= 0 ? n.type : 'story';
+    n.title = hs_(n.title, 100);
+    n.location = hs_(n.location, 100);
+    n.time = hs_(n.time, 40);
+    n.text = String(n.text || '').trim().slice(0, 3500) || '...';
 
-  function setSetupBusy(b, label) {
-    setup.busy = b;
-    Array.prototype.forEach.call(setupModal.querySelectorAll('button'), function (x) { x.disabled = b; });
-    if (b) setupMsg(label || 'กำลังทำงาน...');
-  }
+    if (n.type === 'ending') {
+      n.choices = [];
+      return;
+    }
 
-  function applyStage(stage, autoOpen) {
-    setup.stage = stage || 'playing';
-    document.getElementById('setupbtn').style.display = setup.stage === 'playing' ? 'none' : '';
-    if (setup.stage === 'playing') { setupModal.style.display = 'none'; return; }
-    if (autoOpen) openSetup(false);
-  }
+    if (n.type === 'combat' && n.combat && typeof n.combat === 'object') {
+      const c = n.combat;
+      c.enemy = hs_(c.enemy || 'ศัตรู', 80);
+      c.tough = hs_(c.tough || 'ฝึกมา', 40);
+      c.max_hp_scale = Math.max(40, Math.min(300, Math.round(hn_(c.max_hp_scale, 100))));
+      c.atk_dc = Math.max(6, Math.min(24, Math.round(hn_(c.atk_dc, 12))));
+      c.enemy_dmg = Math.max(5, Math.min(45, Math.round(hn_(c.enemy_dmg, 14))));
+      c.can_flee = c.can_flee === true;
+      c.win_next = fixTarget(c.win_next, idx, n.id);
+      if (c.can_flee) c.flee_next = fixTarget(c.flee_next, idx, n.id);
+      return;
+    }
 
-  function openSetup(keep) {
-    var kind = setup.stage === 'world' ? 'world' : 'char';
-    var same = keep && setup.kind === kind && setup.fields.length;
-    var t = SETUP_TEXT[kind];
-    setup.kind = kind;
-    document.getElementById('setupTitle').textContent = t.title;
-    document.getElementById('setupIntro').textContent = t.intro;
-    document.getElementById('setupConceptLabel').textContent = t.conceptLabel;
-    document.getElementById('setupConcept').placeholder = t.conceptHint;
-    document.getElementById('setupOk').textContent = t.ok;
-    document.getElementById('setupPreset').style.display = kind === 'world' ? 'block' : 'none';
-    document.getElementById('setupAdd').style.display = kind === 'char' ? 'block' : 'none';
-    setupMsg('');
-    setupModal.style.display = 'flex';
-    if (same) { renderSetupForm(); return; }
-    setup.fields = [];
-    document.getElementById('setupConcept').value = '';
-    renderSetupForm();
-    if (kind === 'char') runDraft({});
-  }
-
-  function serializeFields() {
-    collectSetup();
-    return setup.fields
-      .filter(function (f) { return !(f.custom && !String(f.label || '').trim()); })
-      .map(function (f) {
-        return { key: f.key, label: f.label, type: f.type, value: f.value, hint: f.hint,
-                 options: f.options || [], custom: !!f.custom, required: !!f.required };
+    if (n.type === 'input' && Array.isArray(n.branches) && n.branches.length) {
+      n.input_prompt = hs_(n.input_prompt || 'พิมพ์คำพูดหรือการกระทำของคุณ:', 300);
+      n.branches = n.branches.slice(0, 5).map(function (b) {
+        return {
+          condition: hs_(b && b.condition, 300) || 'ทั่วไป',
+          next: fixTarget(b && b.next, idx, n.id)
+        };
       });
-  }
-
-  function collectSetup() {
-    setup.fields.forEach(function (f) {
-      if (f.el) f.value = f.el.value;
-      if (f.labelEl) f.label = f.labelEl.value;
-    });
-  }
-
-  function renderSetupForm() {
-    var box = document.getElementById('setupForm');
-    box.innerHTML = '';
-    if (!setup.fields.length) {
-      box.appendChild(mk('div', 'hnote', setup.kind === 'world'
-        ? 'ยังไม่มีร่าง พิมพ์แนวโลกด้านบนแล้วกด ✨ ให้ AI ร่าง หรือ 🎲 สุ่มทั้งหมด'
-        : 'ยังไม่มีร่าง กด ✨ ให้ AI ร่าง'));
-      return;
-    }
-    setup.fields.forEach(function (f) {
-      var wrap = mk('div', 'sf');
-      var head = mk('div', 'sf-head');
-      f.labelEl = null;
-      if (f.custom) {
-        var li = mk('input', 'sf-in');
-        li.type = 'text'; li.value = f.label || ''; li.placeholder = 'ชื่อช่อง';
-        f.labelEl = li;
-        head.appendChild(li);
-      } else {
-        head.appendChild(mk('label', '', f.label + (f.required ? ' *' : '')));
+      if (Array.isArray(n.choices)) {
+        n.choices = n.choices.slice(0, 4).map(function (ch) {
+          if (!ch || !(ch.text || ch.label)) return null;
+          return {
+            text: hs_(ch.text || ch.label, 140),
+            next: fixTarget(ch.next, idx, n.id),
+            req_item: hs_(ch.req_item, 80),
+            consume_item: !!ch.consume_item,
+            req_money: Math.max(0, Math.round(hn_(ch.req_money, 0)))
+          };
+        }).filter(Boolean);
       }
-      var tools = mk('span', 'sf-tools');
-      var btn;
-      if (f.custom) {
-        btn = mk('button', 'sf-mini', '✕');
-        btn.title = 'ลบช่องนี้';
-        btn.addEventListener('click', function () {
-          collectSetup();
-          setup.fields.splice(setup.fields.indexOf(f), 1);
-          renderSetupForm();
-        });
-      } else {
-        btn = mk('button', 'sf-mini', '🎲');
-        btn.title = 'ให้ AI ร่างช่องนี้ใหม่';
-        btn.addEventListener('click', function () { runDraft({ only: f.key }); });
-      }
-      tools.appendChild(btn);
-      head.appendChild(tools);
-      wrap.appendChild(head);
-
-      var el;
-      var val = f.value || '';
-      if (f.type === 'textarea') {
-        el = mk('textarea', 'sf-in');
-        el.rows = Math.max(3, Math.min(12, val.split('\n').length + Math.floor(val.length / 45)));
-      } else if (f.type === 'select') {
-        el = mk('select', 'sf-in');
-        var opts = [''].concat(f.options || []);
-        if (val && opts.indexOf(val) < 0) opts.push(val);
-        opts.forEach(function (o) {
-          var op = mk('option', '', o || '(เลือก)');
-          op.value = o;
-          el.appendChild(op);
-        });
-      } else {
-        el = mk('input', 'sf-in');
-        el.type = 'text';
-        if (f.type === 'number') el.setAttribute('inputmode', 'numeric');
-      }
-      el.value = val;
-      f.el = el;
-      wrap.appendChild(el);
-      if (f.hint) wrap.appendChild(mk('small', 'sf-hint', f.hint));
-      box.appendChild(wrap);
-    });
-  }
-
-  function runDraft(opts) {
-    if (setup.busy) return;
-    var concept = opts.concept != null ? opts.concept : document.getElementById('setupConcept').value.trim();
-    var current = opts.fresh ? [] : serializeFields();
-    if (setup.kind === 'world' && !opts.only && !concept && !current.length) {
-      setupMsg('พิมพ์แนวโลกที่อยากเล่นก่อน หรือกด 🎲 สุ่มทั้งหมด');
-      return;
-    }
-    setSetupBusy(true, opts.only ? 'AI กำลังร่างช่องนี้ใหม่...' : 'AI กำลังร่าง...');
-    api('draft', { code: code, key: apiKey, kind: setup.kind, concept: concept, fields: current, only: opts.only || '' })
-      .then(function (res) {
-        setSetupBusy(false);
-        if (!res.ok) { setupMsg('⚠️ ' + res.error); return; }
-        setup.fields = res.fields;
-        renderSetupForm();
-        setupMsg('');
-      })
-      .catch(function (err) { setSetupBusy(false); setupMsg('⚠️ ' + err.message); });
-  }
-
-  function setupConfirm() {
-    if (setup.busy) return;
-    var list = serializeFields();
-    if (!list.length) { setupMsg('ยังไม่มีข้อมูลในฟอร์ม กด ✨ ให้ AI ร่างก่อน'); return; }
-    var missing = list.filter(function (f) { return f.required && !String(f.value || '').trim(); });
-    if (missing.length) {
-      setupMsg('⚠️ กรุณากรอกช่องที่มี * : ' + missing.map(function (f) { return f.label; }).join(', '));
       return;
     }
 
-    if (setup.kind === 'world') {
-      setSetupBusy(true, 'กำลังล็อกโลก...');
-      api('lockworld', { code: code, fields: list })
-        .then(function (res) {
-          setSetupBusy(false);
-          if (!res.ok) { setupMsg('⚠️ ' + res.error); return; }
-          setup.fields = [];
-          applyStage(res.stage, true);
-        })
-        .catch(function (err) { setSetupBusy(false); setupMsg('⚠️ ' + err.message); });
-      return;
-    }
-
-    setSetupBusy(true, 'กำลังสร้างตัวละครและเนื้อเรื่องลับ (อาจใช้เวลาสักครู่)...');
-    api('confirmchar', { code: code, key: apiKey, fields: list })
-      .then(function (res) {
-        setSetupBusy(false);
-        if (!res.ok) { setupMsg('⚠️ ' + res.error); return; }
-        setup.fields = [];
-        setupModal.style.display = 'none';
-        applyStage('playing');
-        curChoices = { list: res.choices || [], panel: !!res.panel };
-        add('user', res.sent);
-        add('model', res.text);
-        if (res.hud !== undefined) setHud(res.hud, res.hudEvents);
-        renderChoices();
-        showSkillPopups(res.skillEvents);
-        if (res.memPending) syncMemory(finishSync);
-      })
-      .catch(function (err) { setSetupBusy(false); setupMsg('⚠️ ' + err.message); });
-  }
-
-  // ---------- ปุ่มตัวเลือก & แผงใช้สกิล/ไอเท็ม ----------
-  var USABLE_GUESS = /skill|spell|magic|abilit|power|สกิล|เวท|พลัง|วิชา/i;
-
-  function usableLists() {
-    var skills = [], items = [];
-    if (!hud) return { skills: skills, items: items };
-    hud.sections.forEach(function (s) {
-      if (s.key === 'inventory') {
-        s.items.forEach(function (r) { items.push({ name: r.name, qty: r.qty, note: r.note || '' }); });
-        return;
-      }
-      if (s.type === 'skills') {
-        s.items.forEach(function (r) {
-          var note = (r.status === 'training' ? 'กำลังฝึก ' + r.progress + '%' : 'Lv' + r.level) + (r.cost ? ' · ' + r.cost : '');
-          skills.push({ name: r.name, note: note });
-        });
-        return;
-      }
-      var usable = s.usable === true || (s.usable === undefined && USABLE_GUESS.test(s.key + ' ' + s.label));
-      if (!usable) return;
-      s.items.forEach(function (r) {
-        var n = r.name || r.k;
-        if (n) skills.push({ name: n, note: r.note || r.v || '' });
-      });
-    });
-    return { skills: skills, items: items };
-  }
-
-  function renderChoices() {
-    Array.prototype.forEach.call(document.querySelectorAll('.choices'), function (e) { e.remove(); });
-    var opts = (curChoices.list || []).map(function (t) { return { label: t, send: t }; });
-    if (!opts.length) opts = textChoices(lastModelText);          // ตัวสำรองสำหรับเซฟเก่า
-    var u = usableLists();
-    var showUse = (curChoices.panel || (hud && hud.combat)) && (u.skills.length || u.items.length);
-    if (!opts.length && !showUse) return;
-
-    var box = mk('div', 'choices');
-    opts.forEach(function (o) {
-      var b = mk('button', 'chbtn', o.label);
-      b.addEventListener('click', function () { sendText(o.send); });
-      box.appendChild(b);
-    });
-    if (showUse) {
-      if (u.skills.length) {
-        var bs = mk('button', 'chbtn chuse', '✨ ใช้สกิล / เวท (' + u.skills.length + ')');
-        bs.addEventListener('click', function () { openUse('skill'); });
-        box.appendChild(bs);
-      }
-      if (u.items.length) {
-        var bi = mk('button', 'chbtn chuse', '🎒 ใช้ไอเท็ม (' + u.items.length + ')');
-        bi.addEventListener('click', function () { openUse('item'); });
-        box.appendChild(bi);
-      }
-    }
-    chat.appendChild(box);
-    chat.scrollTop = chat.scrollHeight;
-  }
-
-  var useModal = document.getElementById('useModal');
-  var useKind = 'skill';
-
-  function openUse(kind) {
-    useKind = kind;
-    var u = usableLists();
-    var list = kind === 'skill' ? u.skills : u.items;
-    document.getElementById('useTitle').textContent = kind === 'skill' ? '✨ ใช้สกิล / เวท' : '🎒 ใช้ไอเท็ม';
-    var box = document.getElementById('useList');
-    box.innerHTML = '';
-    if (!list.length) box.appendChild(mk('div', 'hnote', '(ไม่มีรายการ)'));
-    list.forEach(function (r) {
-      var b = mk('button', 'useit');
-      var left = mk('div', '', r.name);
-      if (r.note) left.appendChild(mk('small', '', r.note));
-      b.appendChild(left);
-      if (kind === 'item') b.appendChild(mk('b', '', '×' + r.qty));
-      b.addEventListener('click', function () { useEntry(r.name); });
-      box.appendChild(b);
-    });
-    useModal.style.display = 'flex';
-  }
-
-  function useEntry(name) {
-    if (gameMode === 'story') {
-      useModal.style.display = 'none';
-      document.getElementById('useTarget').value = '';
-      storyUseSkillOrItem(useKind, name);
-      return;
-    }
-    var target = document.getElementById('useTarget').value.trim();
-    var text = (useKind === 'skill' ? 'ใช้ ' : 'ใช้ไอเท็ม ') + name + (target ? ' กับ ' + target : '');
-    useModal.style.display = 'none';
-    document.getElementById('useTarget').value = '';
-    sendText(text);
-  }
-
-  document.getElementById('useClose').addEventListener('click', function () { useModal.style.display = 'none'; });
-
-  // ---------- กล่องแจ้งเตือนสกิล (ได้รับสกิลใหม่ / ปลดล็อกแล้ว) มีปุ่มรับทราบอย่างเดียว ----------
-  var skillModal = document.getElementById('skillModal');
-  var skillQueue = [];
-
-  function skField(label, text, cls) {
-    var box = document.getElementById('skBody');
-    box.appendChild(mk('div', 'skl', label));
-    box.appendChild(mk('div', 'skv' + (cls ? ' ' + cls : ''), text));
-  }
-
-  function nextSkillPopup() {
-    var p = skillQueue.shift();
-    if (!p) { skillModal.style.display = 'none'; return; }
-    var s = p.skill || {};
-    document.getElementById('skTitle').textContent = p.type === 'unlock' ? '🔓 ปลดล็อกสกิลแล้ว' : '✨ คุณได้รับสกิลใหม่';
-    document.getElementById('skName').textContent = s.name || '';
-    document.getElementById('skMeta').textContent = [s.kind,
-      s.status === 'training' ? 'กำลังฝึก ' + (s.progress || 0) + '% (ยังไม่ปลดล็อกเต็มที่)' : 'Lv' + (s.level || 1)]
-      .filter(Boolean).join(' · ');
-    var box = document.getElementById('skBody');
-    box.innerHTML = '';
-    if (p.reason) skField('เหตุผล', p.reason);
-    if (p.type !== 'unlock' && p.source) skField('ได้มาจาก', p.source);
-    if (s.cost) skField('ต้นทุน', s.cost);
-    if (s.limit) skField('ข้อจำกัด', s.limit);
-    if (s.risk) skField('ความเสี่ยง', s.risk, 'skrisk');
-    skillModal.style.display = 'flex';
-  }
-
-  function showSkillPopups(list) {
-    if (!list || !list.length) return;
-    skillQueue = skillQueue.concat(list);
-    if (skillModal.style.display !== 'flex') nextSkillPopup();
-  }
-
-  document.getElementById('skOk').addEventListener('click', nextSkillPopup);
-
-  document.getElementById('setupDraft').addEventListener('click', function () { runDraft({}); });
-  document.getElementById('setupRandom').addEventListener('click', function () { runDraft({ concept: 'สุ่ม', fresh: true }); });
-  document.getElementById('setupOk').addEventListener('click', setupConfirm);
-  document.getElementById('setupClose').addEventListener('click', function () {
-    if (setup.busy) return;
-    setupModal.style.display = 'none';
-  });
-  document.getElementById('setupbtn').addEventListener('click', function () { openSetup(true); });
-  document.getElementById('setupAdd').addEventListener('click', function () {
-    collectSetup();
-    setup.fields.push({ key: 'custom_' + Date.now(), label: '', type: 'textarea', value: '', hint: '',
-                        options: [], custom: true, required: false });
-    renderSetupForm();
-  });
-  document.getElementById('setupPreset').addEventListener('click', function () {
-    if (setup.busy) return;
-    setSetupBusy(true, 'กำลังใช้โลกพรีเซ็ต...');
-    api('usepreset', { code: code, preset: 'magic' })
-      .then(function (res) {
-        setSetupBusy(false);
-        if (!res.ok) { setupMsg('⚠️ ' + res.error); return; }
-        setup.fields = [];
-        applyStage(res.stage, true);
-      })
-      .catch(function (err) { setSetupBusy(false); setupMsg('⚠️ ' + err.message); });
-  });
-
-  // =========================================================================
-  // ⚡ STORY MODE ENGINE (100% Pre-generated Gamebook + Auto-Retry 503)
-  // =========================================================================
-  var MAX_AUTO_RETRIES = 20;   // จำนวนครั้งสูงสุดที่กดลองใหม่ให้อัตโนมัติต่อบทเมื่อเจอ 503
-  var storyBook = null;
-  var storySave = null;
-  var storyGenState = { step: 0, world: '', char: '', chaptersMeta: [], busy: false, retryCount: 0, aborted: false };
-  var storySyncTimer = null;
-  var storyRetryTimer = null;
-  var storyStepTimer = null;
-
-  function cloneObj(o) { return JSON.parse(JSON.stringify(o)); }
-  function localStoryKey() { return 'rpg_story_save_' + code; }
-
-  function clearStoryTimers() {
-    clearInterval(storyRetryTimer);
-    clearTimeout(storyStepTimer);
-    storyRetryTimer = null;
-    storyStepTimer = null;
-  }
-
-  function persistStoryLocal() {
-    if (!code || !storySave) return;
-    try { localStorage.setItem(localStoryKey(), JSON.stringify(storySave)); } catch (e) {}
-  }
-
-  function syncStoryServer(immediate) {
-    persistStoryLocal();
-    clearTimeout(storySyncTimer);
-    var run = function () {
-      if (!storySave || gameMode !== 'story') return;
-      api('story_save', { code: code, save: storySave }).catch(function () {});
-    };
-    if (immediate) run();
-    else storySyncTimer = setTimeout(run, 1200);
-  }
-
-  function setBarVisibility(showInput, placeholderText) {
-    document.getElementById('bar').style.display = showInput ? 'flex' : 'none';
-    document.getElementById('cmdbtn').style.display = gameMode === 'story' ? 'none' : '';
-    if (placeholderText) input.placeholder = placeholderText;
-    else if (gameMode !== 'story') input.placeholder = 'พิมพ์การกระทำเอง หรือกดตัวเลือกด้านบน';
-  }
-
-  function exitStoryModeUI() {
-    gameMode = 'sandbox';
-    storyBook = null;
-    storySave = null;
-    document.getElementById('endingsbtn').style.display = 'none';
-    document.getElementById('rewindbtn').style.display = 'none';
-    setBarVisibility(true);
-  }
-
-  function updateEndingsBtnLabel() {
-    var btn = document.getElementById('endingsbtn');
-    if (gameMode !== 'story' || !storyBook) { btn.style.display = 'none'; return; }
-    var unlocked = (storySave && storySave.unlockedEndings) ? storySave.unlockedEndings.length : 0;
-    var total = (storyBook.endings && storyBook.endings.length) ? storyBook.endings.length : 5;
-    btn.textContent = '🏆 ฉากจบ ' + unlocked + '/' + total;
-    btn.style.display = '';
-    document.getElementById('rewindbtn').style.display = '';
-  }
-
-  // ---------- ตัวสร้างเนื้อเรื่องรวดเดียวครบ 5 บท + ระบบกดลองใหม่อัตโนมัติ ----------
-  var storyStartModal = document.getElementById('storyStartModal');
-  document.getElementById('openStoryStart').addEventListener('click', function () {
-    modal.style.display = 'none';
-    openStoryCreator();
-  });
-  document.getElementById('storyStartClose').addEventListener('click', function () {
-    // กดยกเลิก/ปิดได้ตลอดเวลา (รวมถึงตอนกำลังนับถอยหลัง Auto-Retry)
-    storyGenState.aborted = true;
-    storyGenState.busy = false;
-    clearStoryTimers();
-    storyStartModal.style.display = 'none';
-  });
-
-  function openStoryCreator() {
-    clearStoryTimers();
-    storyGenState.aborted = false;
-    storyGenState.busy = false;
-    document.getElementById('storyFormArea').style.display = 'block';
-    document.getElementById('storyProgArea').style.display = 'none';
-    document.getElementById('stRetryBtn').style.display = 'none';
-    document.getElementById('storyStartClose').textContent = 'ปิด';
-    document.getElementById('stProgSub').style.color = '#aaa';
-    storyStartModal.style.display = 'flex';
-  }
-
-  document.getElementById('stGoBtn').addEventListener('click', function () {
-    startStoryGeneration(document.getElementById('stWorldIn').value.trim(), document.getElementById('stCharIn').value.trim());
-  });
-  document.getElementById('stRandBtn').addEventListener('click', function () {
-    startStoryGeneration('สุ่มโลกผจญภัยสุดเข้มข้นหักมุมน่าติดตาม', 'สุ่มตัวละครเอกที่มีความสามารถโดดเด่น');
-  });
-  document.getElementById('stRetryBtn').addEventListener('click', function () {
-    clearStoryTimers();
-    document.getElementById('stRetryBtn').style.display = 'none';
-    document.getElementById('stProgSub').style.color = '#aaa';
-    runStoryGenStep();
-  });
-
-  function setStoryProg(pct, title, sub, subColor) {
-    document.getElementById('stProgFill').style.width = pct + '%';
-    if (title) document.getElementById('stProgTitle').textContent = title;
-    if (sub) document.getElementById('stProgSub').textContent = sub;
-    document.getElementById('stProgSub').style.color = subColor || '#aaa';
-  }
-
-  function startStoryGeneration(wConcept, cConcept) {
-    if (!apiKey) { storyStartModal.style.display = 'none'; askCode('⚠️ กรุณาใส่ Gemini API key ก่อนสร้างเนื้อเรื่อง'); return; }
-    clearStoryTimers();
-    storyGenState = { step: 0, world: wConcept, char: cConcept, chaptersMeta: [], busy: true, retryCount: 0, aborted: false };
-    document.getElementById('storyFormArea').style.display = 'none';
-    document.getElementById('storyProgArea').style.display = 'block';
-    document.getElementById('stRetryBtn').style.display = 'none';
-    document.getElementById('storyStartClose').textContent = 'ยกเลิก';
-    runStoryGenStep();
-  }
-
-  function runStoryGenStep() {
-    if (storyGenState.aborted) return;
-    clearStoryTimers();
-    storyGenState.busy = true;
-    document.getElementById('stRetryBtn').style.display = 'none';
-
-    var retryNote = storyGenState.retryCount > 0
-      ? ' (กำลังลองใหม่อัตโนมัติ รอบที่ ' + storyGenState.retryCount + ')'
-      : '';
-
-    if (storyGenState.step === 0) {
-      setStoryProg(8,
-        '📐 ขั้นที่ 1/6: กำลังวางโครงเรื่องใหญ่ ตัวละคร และ 5 ฉากจบ...' + retryNote,
-        'AI กำลังออกแบบโลก ไอเท็มกุญแจ และเส้นทางแยกทั้งหมด... (หากเซิร์ฟเวอร์ AI คนเยอะ ระบบจะกดลองต่อให้อัตโนมัติ)');
-      api('story_init', {
-        code: code,
-        key: apiKey,
-        worldConcept: storyGenState.world,
-        charConcept: storyGenState.char,
-        isRetry: storyGenState.retryCount > 0
-      })
-        .then(function (res) {
-          if (storyGenState.aborted) return;
-          if (!res.ok) throw new Error(res.error);
-          storyGenState.chaptersMeta = res.chapters || [];
-          storyGenState.title = res.title || '';
-          storyGenState.step = 1;
-          storyGenState.retryCount = 0;   // สำเร็จขั้นนี้แล้ว รีเซ็ตตัวนับ retry
-          storyStepTimer = setTimeout(runStoryGenStep, 1000);
-        })
-        .catch(onStoryGenError);
-      return;
-    }
-
-    var ch = storyGenState.step;
-    var chInfo = storyGenState.chaptersMeta[ch - 1];
-    var chTitle = chInfo ? chInfo.title : ('บทที่ ' + ch);
-    var pct = 15 + Math.round(((ch - 1) / 5) * 80);
-    setStoryProg(pct,
-      '📖 ขั้นที่ ' + (ch + 1) + '/6: กำลังเขียนเนื้อเรื่องบทที่ ' + ch + '/5 — "' + chTitle + '"' + retryNote,
-      'เรื่อง: ' + (storyGenState.title || '-') + '\nกำลังสร้างฉาก ทางแยก ศัตรู และไอเท็มของบทที่ ' + ch + '...');
-
-    api('story_chap', { code: code, key: apiKey, chapter: ch })
-      .then(function (res) {
-        if (storyGenState.aborted) return;
-        if (!res.ok) throw new Error(res.error);
-        storyGenState.retryCount = 0;   // สำเร็จบทนี้แล้ว รีเซ็ตตัวนับ retry
-        if (res.done && res.storyBook) {
-          setStoryProg(100, '✅ สร้างเนื้อเรื่องครบ 100% พร้อมเข้าเล่น!', 'เข้าสู่โลก "' + res.storyBook.title + '" ทันที...', '#86efac');
-          storyGenState.busy = false;
-          document.getElementById('storyStartClose').textContent = 'ปิด';
-          try { localStorage.removeItem(localStoryKey()); } catch (e) {}
-          setTimeout(function () {
-            if (storyGenState.aborted) return;
-            storyStartModal.style.display = 'none';
-            enterStoryMode(res.storyBook, res.storySave);
-          }, 500);
-        } else {
-          storyGenState.step = ch + 1;
-          storyStepTimer = setTimeout(runStoryGenStep, 1000);
-        }
-      })
-      .catch(onStoryGenError);
-  }
-
-  function isFatalApiKeyError(msg) {
-    return /API key|ยังไม่ได้ใส่|INVALID_ARGUMENT|PERMISSION_DENIED|\b400\b|\b401\b|\b403\b/i.test(String(msg || ''));
-  }
-
-  function onStoryGenError(err) {
-    if (storyGenState.aborted) return;
-    clearStoryTimers();
-    var msg = String((err && err.message) || err || 'เกิดข้อผิดพลาด');
-
-    // ถ้าไม่ได้ผิดที่ API key และยังไม่เกินจำนวนครั้งสูงสุด ให้กดลองใหม่อัตโนมัติเลย!
-    if (!isFatalApiKeyError(msg) && storyGenState.retryCount < MAX_AUTO_RETRIES) {
-      storyGenState.retryCount += 1;
-      var waitSec = Math.min(12, 3 + storyGenState.retryCount * 2);   // 5s, 7s, 9s, 11s, 12s...
-      var remain = waitSec;
-      var retryBtn = document.getElementById('stRetryBtn');
-      retryBtn.textContent = '⏩ ลองทันทีเดี๋ยวนี้ (ไม่ต้องรอนับถอยหลัง)';
-      retryBtn.style.display = 'block';
-
-      var updateCountdownMsg = function () {
-        document.getElementById('stProgSub').style.color = '#fcd34d';
-        document.getElementById('stProgSub').textContent =
-          '⏳ เซิร์ฟเวอร์ AI มีคนใช้งานหนาแน่นชั่วคราว (' + msg.slice(0, 110) + ')\n' +
-          '🔄 ระบบกำลังกดลองขั้นนี้ใหม่อัตโนมัติ (รอบที่ ' + storyGenState.retryCount + '/' + MAX_AUTO_RETRIES + ') ในอีก ' + remain + ' วินาที...\n' +
-          '✨ ปล่อยหน้าจอทิ้งไว้ได้เลย ไม่ต้องกดเอง ข้อมูลบทก่อนหน้ายังอยู่ครบครับ!';
+    n.type = 'story';
+    const chs = (Array.isArray(n.choices) ? n.choices : []).slice(0, 5).map(function (ch) {
+      if (!ch) return null;
+      const txt = hs_(ch.text || ch.label, 140);
+      if (!txt) return null;
+      return {
+        text: txt,
+        next: fixTarget(ch.next, idx, n.id),
+        req_item: hs_(ch.req_item, 80),
+        consume_item: !!ch.consume_item,
+        req_money: Math.max(0, Math.round(hn_(ch.req_money, 0)))
       };
-      updateCountdownMsg();
+    }).filter(Boolean);
 
-      storyRetryTimer = setInterval(function () {
-        if (storyGenState.aborted) { clearStoryTimers(); return; }
-        remain -= 1;
-        if (remain <= 0) {
-          clearStoryTimers();
-          runStoryGenStep();
-        } else {
-          updateCountdownMsg();
-        }
-      }, 1000);
-      return;
+    if (!chs.length || !chs.some(function (c) { return !c.req_item && !c.req_money; })) {
+      chs.push({ text: 'ตัดสินใจเดินหน้าต่อไป', next: fixTarget('', idx, n.id), req_item: '', consume_item: false, req_money: 0 });
     }
+    n.choices = chs;
+  });
 
-    // กรณีคีย์ผิด หรือลองอัตโนมัติครบ 20 รอบแล้วยังไม่ได้ ค่อยหยุดให้กดเอง
-    storyGenState.busy = false;
-    document.getElementById('storyStartClose').textContent = 'ปิด';
-    document.getElementById('stProgSub').style.color = '#fca5a5';
-    document.getElementById('stProgSub').textContent = '⚠️ เกิดข้อผิดพลาด: ' + msg + '\nกดปุ่มด้านล่างเพื่อลองสร้างขั้นนี้ต่อได้เลย (ข้อมูลบทก่อนหน้าไม่หาย)';
-    var rBtn = document.getElementById('stRetryBtn');
-    rBtn.textContent = '🔄 ลองสร้างขั้นนี้อีกครั้ง';
-    rBtn.style.display = 'block';
-    storyGenState.retryCount = 0;
-  }
+  return list;
+}
 
-  // ---------- เริ่มเข้าสู่โหมดเนื้อเรื่อง ----------
-  function enterStoryMode(book, serverSave) {
-    gameMode = 'story';
-    setupModal.style.display = 'none';
-    document.getElementById('setupbtn').style.display = 'none';
 
-    if (!book || !book.nodes || Object.keys(book.nodes).length === 0 || book.chapters_ready < (book.chapters_total || 5)) {
-      chat.innerHTML = '';
-      add('model', '⚠️ เนื้อเรื่องของเซฟนี้ยังสร้างไม่ครบ 5 บท กดปุ่ม "เริ่มเกมใหม่" เพื่อสร้างโหมดเนื้อเรื่องใหม่ได้เลยครับ');
-      openStoryCreator();
-      return;
-    }
+// ---------- API 2: สร้างฉากรายบท (ไม่ล็อกตอนเรียก AI ทำให้ยิงบทที่ 2, 3, 4, 5 ขนานพร้อมกันได้ทันที!) ----------
+function storyGenChapter(req) {
+  try {
+    init_(req.code);
+    const chNum = Math.max(1, Math.min(STORY_CHAPTERS, Math.round(hn_(req.chapter, 1))));
+    const bp = getSheetKv_('StoryBook', 'blueprint');
+    if (!bp) throw new Error('ยังไม่มี Blueprint กรุณาเริ่มสร้างใหม่');
 
-    storyBook = book;
-    var localSv = null;
-    try {
-      var rawLocal = localStorage.getItem(localStoryKey());
-      if (rawLocal) localSv = JSON.parse(rawLocal);
-    } catch (e) {}
-
-    if (localSv && serverSave && (localSv.turn || 0) > (serverSave.turn || 0) && book.nodes[localSv.currentNode]) {
-      storySave = localSv;
-      if (serverSave.unlockedEndings) {
-        serverSave.unlockedEndings.forEach(function (eid) {
-          if (storySave.unlockedEndings.indexOf(eid) < 0) storySave.unlockedEndings.push(eid);
-        });
-      }
-    } else if (serverSave && book.nodes[serverSave.currentNode]) {
-      storySave = serverSave;
-    } else {
-      storySave = {
-        currentNode: book.start_node,
-        turn: 1,
-        hud: cloneObj(book.initial_hud),
-        combatState: null,
-        dead: false,
-        unlockedEndings: [],
-        checkpoints: [],
-        historyLog: []
-      };
-    }
-
-    chat.innerHTML = '';
-    add('model', '📖 ' + storyBook.title + '\n' + (storyBook.world_summary || ''));
-    setHud(storySave.hud);
-    updateEndingsBtnLabel();
-    renderStoryNode(storySave.currentNode, true);
-  }
-
-  // ---------- ตัวช่วยจัดการ HUD ฝั่งหน้าเว็บแบบ 0 วินาที ----------
-  function getInvSection(h) { return h.sections.filter(function (s) { return s.key === 'inventory'; })[0]; }
-  function getSkillSection(h) { return h.sections.filter(function (s) { return s.key === 'skills'; })[0]; }
-
-  function hasStoryItem(itemName) {
-    if (!storySave || !storySave.hud || !itemName) return false;
-    var inv = getInvSection(storySave.hud);
-    if (!inv) return false;
-    var target = itemName.trim().toLowerCase();
-    return inv.items.some(function (it) { return it.name.trim().toLowerCase() === target && it.qty > 0; });
-  }
-
-  function getStoryMoney() {
-    if (!storySave || !storySave.hud) return 0;
-    var c = storySave.hud.counters.filter(function (x) { return x.key === 'money'; })[0] || storySave.hud.counters[0];
-    return c ? c.value : 0;
-  }
-
-  function addStoryMoney(delta, events) {
-    var h = storySave.hud;
-    var c = h.counters.filter(function (x) { return x.key === 'money'; })[0] || h.counters[0];
-    if (!c || !delta) return;
-    c.value = Math.max(0, c.value + delta);
-    events.push((c.icon || '💰') + ' ' + c.label + ' ' + (delta > 0 ? '+' : '') + delta + ' (' + c.value + ')');
-  }
-
-  function changeStoryBar(key, delta, events) {
-    var h = storySave.hud;
-    var b = h.bars.filter(function (x) { return x.key === key; })[0];
-    if (!b && key === 'mp' && h.bars[1]) b = h.bars[1];
-    if (!b || !delta) return 0;
-    var before = b.cur;
-    b.cur = Math.max(0, Math.min(b.max, b.cur + Math.round(delta)));
-    var real = b.cur - before;
-    if (real !== 0 && events) {
-      events.push((b.icon || '') + ' ' + b.label + ' ' + (real > 0 ? '+' : '') + real + ' (' + b.cur + '/' + b.max + ')');
-    }
-    return real;
-  }
-
-  function addStoryItem(itemObj, events) {
-    var inv = getInvSection(storySave.hud);
-    if (!inv || !itemObj || !itemObj.name) return;
-    var q = Math.max(1, Math.round(Number(itemObj.qty) || 1));
-    var key = itemObj.name.trim().toLowerCase();
-    var ex = inv.items.filter(function (x) { return x.name.trim().toLowerCase() === key; })[0];
-    if (ex) {
-      ex.qty += q;
-      if (itemObj.note && !ex.note) ex.note = itemObj.note;
-    } else {
-      inv.items.push({ name: itemObj.name.trim(), qty: q, note: itemObj.note || '' });
-    }
-    if (events) events.push('🎒 +' + itemObj.name.trim() + ' ×' + q);
-  }
-
-  function removeStoryItem(name, qty, events) {
-    var inv = getInvSection(storySave.hud);
-    if (!inv || !name) return false;
-    var q = Math.max(1, Math.round(Number(qty) || 1));
-    var key = name.trim().toLowerCase();
-    for (var i = 0; i < inv.items.length; i++) {
-      if (inv.items[i].name.trim().toLowerCase() === key) {
-        if (inv.items[i].qty <= q) inv.items.splice(i, 1);
-        else inv.items[i].qty -= q;
-        if (events) events.push('🎒 −' + name.trim() + ' ×' + q);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  function applyNodeEffects(node) {
-    var ef = node && node.effects;
-    var events = [];
-    var popups = [];
-    var h = storySave.hud;
-    if (node.location) h.meta.location = node.location;
-    if (node.time) h.meta.time = node.time;
-    h.turn = storySave.turn;
-
-    if (!ef || typeof ef !== 'object') return { events: events, popups: popups };
-    if (ef.hp) changeStoryBar('hp', Number(ef.hp), events);
-    if (ef.mp) changeStoryBar('mp', Number(ef.mp), events);
-    if (ef.money) addStoryMoney(Number(ef.money), events);
-
-    (ef.items_add || []).forEach(function (it) {
-      if (typeof it === 'string') it = { name: it, qty: 1, note: '' };
-      addStoryItem(it, events);
-    });
-    (ef.items_remove || []).forEach(function (it) {
-      var nm = typeof it === 'string' ? it : (it && it.name);
-      var qt = (it && it.qty) ? it.qty : 1;
-      removeStoryItem(nm, qt, events);
-    });
-    (ef.skills_add || []).forEach(function (sk) {
-      if (!sk || !sk.name) return;
-      var sec = getSkillSection(h);
-      if (!sec) return;
-      if (sec.items.some(function (x) { return x.name.trim().toLowerCase() === sk.name.trim().toLowerCase(); })) return;
-      var newSk = {
-        name: sk.name,
-        kind: sk.kind || 'สกิล',
-        level: 1,
-        progress: 0,
-        status: 'unlocked',
-        cost: sk.cost || 'MP 10',
-        limit: sk.limit || '',
-        risk: sk.risk || '',
-        note: sk.note || '[power:34]'
-      };
-      sec.items.push(newSk);
-      events.push('✨ ได้รับสกิลใหม่: ' + newSk.name);
-      popups.push({ type: 'gain', skill: newSk, reason: 'ปลดล็อกจากเหตุการณ์ในเนื้อเรื่อง', source: node.title || '' });
-    });
-    (ef.clues_add || []).forEach(function (cl) {
-      var cSec = h.sections.filter(function (s) { return s.key === 'clues'; })[0];
-      if (!cSec) return;
-      var txt = typeof cl === 'string' ? cl : (cl && cl.name);
-      if (txt && !cSec.items.some(function (x) { return x.name === txt; })) {
-        cSec.items.push({ name: txt, note: '' });
-        events.push('📌 เบาะแสใหม่: ' + txt);
-      }
-    });
-    return { events: events, popups: popups };
-  }
-
-  function saveCheckpoint(label) {
-    if (!storySave || storySave.dead) return;
-    var snap = {
-      label: label || ('Turn ' + storySave.turn + ' — ' + ((storyBook.nodes[storySave.currentNode] && storyBook.nodes[storySave.currentNode].title) || storySave.currentNode)),
-      nodeId: storySave.currentNode,
-      turn: storySave.turn,
-      hud: cloneObj(storySave.hud)
-    };
-    snap.hud.combat = null;
-    storySave.checkpoints = (storySave.checkpoints || []).filter(function (c) { return c.nodeId !== snap.nodeId; });
-    storySave.checkpoints.push(snap);
-    if (storySave.checkpoints.length > 12) storySave.checkpoints.shift();
-  }
-
-  // ---------- แสดงผลฉากปัจจุบัน (0 วินาที ไม่ต้องเรียก AI อีกเลย!) ----------
-  function renderStoryNode(nodeId, isReload) {
-    var node = storyBook.nodes[nodeId];
-    if (!node) {
-      add('model', '⚠️ ไม่พบข้อมูลฉาก (' + nodeId + ') คุณสามารถกดปุ่ม ⏪ ย้อนเวลา เพื่อกลับไปยังฉากก่อนหน้าได้');
-      return;
-    }
-
-    storySave.currentNode = nodeId;
-    var evOut = isReload ? { events: [], popups: [] } : applyNodeEffects(node);
-
-    var header = '🔢 Turn: ' + storySave.turn + (node.chapter ? ' · บทที่ ' + node.chapter : '') +
-      (node.title ? ' — ' + node.title : '');
-    var locLine = [node.location ? '📍 ' + node.location : '', node.time ? '🕐 ' + node.time : ''].filter(Boolean).join('  |  ');
-    add('model', header + (locLine ? '\n' + locLine : '') + '\n\n' + node.text);
-
-    var hpBar = findBar(storySave.hud, 'hp');
-    if (hpBar && hpBar.cur <= 0) storySave.dead = true;
-
-    if (storySave.dead) {
-      storySave.hud.combat = null;
-      setHud(storySave.hud, evOut.events);
-      renderDeathScreen('พลังชีวิต (HP) ของคุณลดลงเหลือ 0');
-      syncStoryServer(true);
-      return;
-    }
-
-    if (node.type === 'ending') {
-      storySave.hud.combat = null;
-      if (storySave.unlockedEndings.indexOf(node.id) < 0) storySave.unlockedEndings.push(node.id);
-      setHud(storySave.hud, evOut.events);
-      updateEndingsBtnLabel();
-      setBarVisibility(false);
-      renderEndingCard(node);
-      syncStoryServer(true);
-      return;
-    }
-
-    if (node.type === 'combat' && node.combat) {
-      if (!isReload || !storySave.combatState || storySave.combatState.nodeId !== node.id) {
-        saveCheckpoint('ก่อนปะทะ: ' + node.combat.enemy);
-        var scale = node.combat.max_hp_scale || 100;
-        storySave.combatState = {
-          nodeId: node.id,
-          enemy: node.combat.enemy,
-          group: !!node.combat.group,
-          tough: node.combat.tough || 'ฝึกมา',
-          curHp: scale,
-          maxHp: scale,
-          atkDc: node.combat.atk_dc || 12,
-          enemyDmg: node.combat.enemy_dmg || 14,
-          moves: node.combat.enemy_moves || ['พุ่งเข้าโจมตีอย่างจัง'],
-          partPool: node.combat.part_debuffs || ['เสียจังหวะชั่วคราว'],
-          debuffs: [],
-          defending: false,
-          canFlee: !!node.combat.can_flee,
-          winNext: node.combat.win_next,
-          fleeNext: node.combat.flee_next
+    // ถ้าบทนี้เคยถูกสร้างเสร็จไปแล้ว ส่งข้อมูลเดิมกลับทันที ไม่เสียโควตาซ้ำ!
+    if (!req.force) {
+      const cachedCh = getSheetKv_('StoryBook', 'chapter_' + chNum);
+      if (cachedCh && Array.isArray(cachedCh.nodes) && cachedCh.nodes.length) {
+        const cachedMap = {};
+        cachedCh.nodes.forEach(function (n) { n.chapter = chNum; cachedMap[n.id] = n; });
+        const fbCached = chNum === 1 ? loadFullStoryBook_() : null;
+        const svCached = chNum === 1 ? loadStorySaveData_() : null;
+        return {
+          ok: true,
+          chapter: chNum,
+          cached: true,
+          nodeCount: cachedCh.nodes.length,
+          newNodes: cachedMap,
+          readyToPlay: chNum === 1,
+          storyBook: fbCached,
+          storySave: svCached
         };
       }
-      syncCombatHudBar();
-      setHud(storySave.hud, evOut.events);
-      showSkillPopups(evOut.popups);
-      setBarVisibility(false);
-      renderStoryCombatButtons();
-      syncStoryServer(false);
-      return;
     }
 
-    storySave.hud.combat = null;
-    setHud(storySave.hud, evOut.events);
-    showSkillPopups(evOut.popups);
+    const chMeta = (bp.chapters || []).filter(function (c) { return Number(c.chapter) === chNum; })[0];
+    if (!chMeta) throw new Error('ไม่พบข้อมูลโครงเรื่องบทที่ ' + chNum);
 
-    if (node.type === 'input') {
-      saveCheckpoint('จุดตัดสินใจ: ' + (node.title || 'พิมพ์คำตอบ'));
-      add('model', '💬 จุดสำคัญ: ' + (node.input_prompt || 'พิมพ์คำพูดหรือการกระทำของคุณด้านล่าง'));
-      setBarVisibility(true, 'พิมพ์คำพูดหรือการกระทำของคุณที่นี่ แล้วกดส่ง...');
-      renderStoryChoiceButtons(node.choices || [], true);
-      syncStoryServer(false);
-      return;
-    }
-
-    setBarVisibility(false);
-    renderStoryChoiceButtons(node.choices || [], false);
-    syncStoryServer(false);
-  }
-
-  function renderStoryChoiceButtons(choices, allowEmpty) {
-    Array.prototype.forEach.call(document.querySelectorAll('.choices'), function (e) { e.remove(); });
-    var u = usableLists();
-    var healItems = u.items.filter(function (it) { return /\[usable:|ฟื้นฟู|ยา/i.test(it.name + ' ' + it.note); });
-    if (!choices.length && !healItems.length && allowEmpty) return;
-
-    var box = mk('div', 'choices');
-    choices.forEach(function (ch) {
-      var missingItem = ch.req_item && !hasStoryItem(ch.req_item);
-      var missingMoney = ch.req_money && getStoryMoney() < ch.req_money;
-      var locked = missingItem || missingMoney;
-
-      var label = ch.text;
-      if (ch.req_item) label = (missingItem ? '🔒 ' : '🔑 ') + label + ' (' + (missingItem ? 'ต้องมี: ' : 'ใช้: ') + ch.req_item + ')';
-      if (ch.req_money) label = (missingMoney ? '🔒 ' : '💰 ') + label + ' (ใช้เงิน ' + ch.req_money + ')';
-
-      var b = mk('button', 'chbtn' + (locked ? ' locked' : ''), label);
-      if (locked) b.disabled = true;
-      else b.addEventListener('click', function () { chooseStoryOption(ch); });
-      box.appendChild(b);
-    });
-
-    if (u.items.length) {
-      var bi = mk('button', 'chbtn chuse', '🎒 ใช้ไอเท็มในกระเป๋า (' + u.items.length + ')');
-      bi.addEventListener('click', function () { openUse('item'); });
-      box.appendChild(bi);
-    }
-    chat.appendChild(box);
-    chat.scrollTop = chat.scrollHeight;
-  }
-
-  function chooseStoryOption(ch) {
-    saveCheckpoint();
-    var ev = [];
-    if (ch.req_item && ch.consume_item) removeStoryItem(ch.req_item, 1, ev);
-    if (ch.req_money) addStoryMoney(-ch.req_money, ev);
-    add('user', ch.text);
-    if (ev.length) toast(ev);
-    storySave.turn += 1;
-    renderStoryNode(ch.next, false);
-  }
-
-  // ---------- ประมวลผลฉากพิมพ์ตอบเอง (พร้อมระบบลองซ้ำอัตโนมัติกรณีเจอ 503) ----------
-  function handleStoryFreeText(text) {
-    text = String(text || '').trim();
-    if (!text || sendBtn.disabled) return;
-    var node = storyBook && storyBook.nodes[storySave.currentNode];
-    if (!node || node.type !== 'input') return;
-
-    saveCheckpoint();
-    add('user', text);
-    setBusy(true, 'กำลังประเมินผลคำตอบของคุณ...');
-
-    var sendInputWithRetry = function (triesLeft) {
-      api('story_input', { code: code, key: apiKey, nodeId: node.id, text: text })
-        .then(function (res) {
-          if (!res.ok) throw new Error(res.error);
-          setBusy(false);
-          if (res.transition) add('model', '✨ ' + res.transition);
-          storySave.turn += 1;
-          renderStoryNode(res.next, false);
-        })
-        .catch(function (err) {
-          var msg = String((err && err.message) || err || '');
-          if (!isFatalApiKeyError(msg) && triesLeft > 0) {
-            setBusy(true, '⏳ เซิร์ฟเวอร์ AI คนเยอะ กำลังลองส่งคำตอบให้อัตโนมัติ...');
-            setTimeout(function () { sendInputWithRetry(triesLeft - 1); }, 3500);
-            return;
-          }
-          setBusy(false);
-          add('model', '⚠️ ' + msg + ' (ลองพิมพ์ส่งใหม่อีกครั้ง หรือกดตัวเลือกด้านล่างได้ครับ)');
-          renderStoryChoiceButtons(node.choices || [], true);
-        });
-    };
-    sendInputWithRetry(3);
-  }
-
-  // ---------- ระบบต่อสู้คำนวณทันที 0 วินาที (D30 Instant Turn-based Combat) ----------
-  function getStatBonus(keywordRegex) {
-    if (!storySave || !storySave.hud) return 1;
-    var st = storySave.hud.sections.filter(function (s) { return s.key === 'stats'; })[0];
-    if (!st) return 1;
-    for (var i = 0; i < st.items.length; i++) {
-      if (keywordRegex.test(st.items[i].k)) {
-        var n = parseInt(String(st.items[i].v).replace(/[^\-\d]/g, ''), 10);
-        if (isFinite(n)) return n;
+    // ถ้ามีบทก่อนหน้าเสร็จอยู่แล้ว ดึงสรุปสั้นๆ มาช่วยเชื่อมบรรยากาศ (ถ้ารันขนานพร้อมกันจะอิงจาก Blueprint โดยตรง)
+    let prevSummary = '';
+    if (chNum > 1) {
+      const prevCh = getSheetKv_('StoryBook', 'chapter_' + (chNum - 1));
+      if (prevCh && Array.isArray(prevCh.nodes)) {
+        prevSummary = '\n\n[ฉากจากบทก่อนหน้าที่เชื่อมเข้ามา]\n' +
+          prevCh.nodes.slice(-3).map(function (n) { return '- ' + n.id + ' (' + n.title + '): ' + String(n.text).slice(0, 120); }).join('\n');
       }
     }
-    return 1;
-  }
 
-  function syncCombatHudBar() {
-    var cs = storySave.combatState;
-    if (!cs) { storySave.hud.combat = null; return; }
-    var pct = Math.max(0, Math.min(100, Math.round((cs.curHp / cs.maxHp) * 100)));
-    storySave.hud.combat = {
-      enemy: cs.enemy,
-      group: cs.group,
-      tough: cs.tough,
-      hp: pct,
-      range: 'ระยะปะทะ',
-      note: 'ความทนทาน: ' + cs.tough,
-      debuffs: cs.debuffs.map(function (d) { return { part: '', text: d }; })
-    };
-  }
+    const userMsg = '[BLUEPRINT ทั้งเรื่อง]\n' + JSON.stringify({
+      title: bp.title,
+      world_summary: bp.world_summary,
+      bars: (bp.initial_hud && bp.initial_hud.bars) || [],
+      key_items: bp.key_items || [],
+      all_chapters_overview: (bp.chapters || []).map(function (c) { return { chapter: c.chapter, title: c.title, outline: c.outline }; }),
+      endings: chNum === STORY_CHAPTERS ? bp.endings : undefined,
+      target_chapter: chMeta
+    }) + prevSummary +
+    '\n\nจงสร้างฉากทั้งหมดของ **บทที่ ' + chNum + ' (' + chMeta.title + ')** จำนวน ' +
+    (chNum === STORY_CHAPTERS ? '14-15 ฉาก (รวมฉากจบ ending ทั้ง 5 ฉาก: end_1 ถึง end_5)' : '11-12 ฉาก') +
+    ' โดยต้องมี entry_nodes ครบทุกตัว (' + (chMeta.entry_nodes || []).map(function (e) { return e.id; }).join(', ') + ')' +
+    ' ตั้ง ID ฉากภายในบทนี้ให้ขึ้นต้นด้วย "c' + chNum + '_" และทางออกชี้ไปยัง exit_targets (' + (chMeta.exit_targets || []).map(function (e) { return e.id; }).join(', ') + ') เท่านั้น!';
 
-  function renderStoryCombatButtons() {
-    Array.prototype.forEach.call(document.querySelectorAll('.choices'), function (e) { e.remove(); });
-    var cs = storySave.combatState;
-    if (!cs) return;
-    var u = usableLists();
-    var box = mk('div', 'choices');
+    // กระจายสระโมเดลสลับกันระหว่างบทคี่ (1,3,5) กับบทคู่ (2,4) เพื่อรันขนานกันได้เร็วสุดขีดโดยไม่ชน Rate Limit!
+    const poolName = (chNum % 2 === 1) ? 'fast_chapter_odd' : 'fast_chapter_even';
+    const raw = callSmartAI_(poolName, STORY_CHAPTER_PROMPT, [], userMsg, true, req.key);
 
-    var bAtk = mk('button', 'chbtn combat-btn', '⚔️ โจมตีปกติ (ทอย D30 ปะทะ ' + cs.enemy + ')');
-    bAtk.addEventListener('click', function () { executeCombatTurn({ kind: 'attack' }); });
-    box.appendChild(bAtk);
+    let parsed;
+    try { parsed = hudParse_(raw); } catch (e) { throw new Error('AI สร้างฉากบทที่ ' + chNum + ' ผิดรูปแบบ JSON ระบบกำลังลองใหม่...'); }
+    const nodes = sanitizeChapterNodes_(chNum, parsed.nodes || parsed, bp);
 
-    if (u.skills.length) {
-      var bSk = mk('button', 'chbtn chuse', '✨ ใช้สกิล / ท่าไม้ตาย (' + u.skills.length + ')');
-      bSk.addEventListener('click', function () { openUse('skill'); });
-      box.appendChild(bSk);
-    }
-    if (u.items.length) {
-      var bIt = mk('button', 'chbtn chuse', '🎒 ใช้ไอเท็ม (' + u.items.length + ')');
-      bIt.addEventListener('click', function () { openUse('item'); });
-      box.appendChild(bIt);
-    }
+    const newNodesMap = {};
+    nodes.forEach(function (n) { newNodesMap[n.id] = n; });
 
-    var bDef = mk('button', 'chbtn defend-btn', '🛡️ ตั้งรับเต็มกำลัง (ลดดาเมจเทิร์นนี้ 60% + ฟื้นพลังเล็กน้อย)');
-    bDef.addEventListener('click', function () { executeCombatTurn({ kind: 'defend' }); });
-    box.appendChild(bDef);
+    let fullBook = null;
+    let initialSave = null;
 
-    if (cs.canFlee && cs.fleeNext) {
-      var bFlee = mk('button', 'chbtn', '🏃 หาจังหวะหลบหนี (เช็คไหวพริบ D30)');
-      bFlee.addEventListener('click', function () { executeCombatTurn({ kind: 'flee' }); });
-      box.appendChild(bFlee);
-    }
+    // ล็อกสั้นๆ แค่เสี้ยววินาทีตอนเขียนบทที่เสร็จลง Google Sheet
+    withSheetWriteLock_(function () {
+      ensureStorySheets_();
+      upsert_('StoryBook', 'chapter_' + chNum, JSON.stringify({ chapter: chNum, nodes: nodes }));
 
-    chat.appendChild(box);
-    chat.scrollTop = chat.scrollHeight;
-  }
-
-  function storyUseSkillOrItem(kind, name) {
-    if (storySave.combatState) {
-      executeCombatTurn({ kind: kind, name: name });
-      return;
-    }
-    var inv = getInvSection(storySave.hud);
-    if (!inv) return;
-    var it = inv.items.filter(function (x) { return x.name === name; })[0];
-    if (!it) return;
-    var note = it.note || '';
-    var ev = [];
-    var mHp = note.match(/\[usable:hp:(\d+)\]/i);
-    var mMp = note.match(/\[usable:mp:(\d+)\]/i);
-    if (mHp) {
-      changeStoryBar('hp', Number(mHp[1]), ev);
-      removeStoryItem(name, 1, ev);
-    } else if (mMp) {
-      changeStoryBar('mp', Number(mMp[1]), ev);
-      removeStoryItem(name, 1, ev);
-    } else if (/ยา|ฟื้น|อาหาร|น้ำ/i.test(it.name + ' ' + note)) {
-      changeStoryBar('hp', 30, ev);
-      removeStoryItem(name, 1, ev);
-    } else {
-      toast(['📌 "' + name + '" เป็นไอเท็มสำคัญ/เนื้อเรื่อง เก็บไว้ใช้เมื่อเจอตัวเลือกที่ตรงกัน']);
-      return;
-    }
-    setHud(storySave.hud, ev);
-    renderStoryChoiceButtons((storyBook.nodes[storySave.currentNode] && storyBook.nodes[storySave.currentNode].choices) || [], false);
-    syncStoryServer(false);
-  }
-
-  function executeCombatTurn(act) {
-    var cs = storySave.combatState;
-    if (!cs) return;
-    var logs = [];
-    var events = [];
-    var atkMod = getStatBonus(/โจมตี|ร่างกาย|กำลัง|แม่น|เวท|body|atk/i);
-    var defMod = getStatBonus(/ป้องกัน|อดทน|ไหวพริบ|เร็ว|def|agi/i);
-    var roll = Math.floor(Math.random() * 30) + 1;
-
-    if (act.kind === 'attack') {
-      add('user', '⚔️ โจมตีใส่ ' + cs.enemy);
-      var total = roll + atkMod;
-      var dc = cs.atkDc - (cs.debuffs.length * 1);
-      logs.push('🎲 ทอย D30: ' + roll + ' + โบนัส ' + atkMod + ' = ' + total + ' (DC ' + dc + ')');
-      if (roll === 30 || total >= dc + 8) {
-        var critDmg = 28 + Math.max(0, atkMod * 4);
-        cs.curHp = Math.max(0, cs.curHp - critDmg);
-        logs.push('💥 โจมตีเข้าจุดสำคัญเต็มแรง! ' + cs.enemy + ' เสียหลักอย่างหนัก!');
-        if (cs.partPool.length && cs.debuffs.length < 3) {
-          var db = cs.partPool[cs.debuffs.length % cs.partPool.length];
-          if (cs.debuffs.indexOf(db) < 0) { cs.debuffs.push(db); events.push('⚔️ ' + cs.enemy + ': ' + db); }
-        }
-      } else if (roll > 1 && total >= dc) {
-        var dmg = 18 + Math.max(0, atkMod * 3);
-        cs.curHp = Math.max(0, cs.curHp - dmg);
-        logs.push('✅ การโจมตีเข้าเป้า! สร้างความเสียหายแก่ ' + cs.enemy);
-      } else {
-        logs.push('💨 ' + cs.enemy + ' เบี่ยงตัวหลบการโจมตีของคุณได้!');
-      }
-    } else if (act.kind === 'skill') {
-      var skSec = getSkillSection(storySave.hud);
-      var sk = skSec && skSec.items.filter(function (x) { return x.name === act.name; })[0];
-      if (!sk) return;
-      var costNum = 0;
-      var cm = String(sk.cost || '').match(/(\d+)/);
-      if (cm) costNum = Number(cm[1]);
-      var mpBar = storySave.hud.bars[1] || findBar(storySave.hud, 'mp');
-      if (mpBar && costNum > 0 && mpBar.cur < costNum) {
-        toast(['⚠️ ' + mpBar.label + ' ไม่พอใช้สกิลนี้ (ต้องการ ' + costNum + ')']);
-        return;
-      }
-      if (mpBar && costNum > 0) changeStoryBar(mpBar.key, -costNum, events);
-      add('user', '✨ ใช้สกิล: ' + sk.name);
-
-      var healMatch = String(sk.note || '').match(/\[heal:(\d+)\]/i);
-      if (healMatch) {
-        var hAmt = Number(healMatch[1]) + (sk.level - 1) * 5;
-        changeStoryBar('hp', hAmt, events);
-        logs.push('💚 ' + sk.name + ' ฟื้นฟูพลังชีวิตของคุณ!');
-      } else {
-        var pMatch = String(sk.note || '').match(/\[power:(\d+)\]/i);
-        var basePow = pMatch ? Number(pMatch[1]) : 32;
-        var sTotal = roll + atkMod + 3;
-        logs.push('🎲 ทอยสกิล D30: ' + roll + ' + โบนัส ' + (atkMod + 3) + ' = ' + sTotal + ' (DC ' + cs.atkDc + ')');
-        if (roll > 1 && sTotal >= cs.atkDc - 2) {
-          var sDmg = basePow + Math.max(0, atkMod * 3) + (roll >= 24 ? 12 : 0);
-          cs.curHp = Math.max(0, cs.curHp - sDmg);
-          logs.push('🔥 "' + sk.name + '" ปะทะเป้าหมายอย่างรุนแรง!');
-          if (cs.partPool.length && cs.debuffs.length < 3) {
-            var sdb = cs.partPool[cs.debuffs.length % cs.partPool.length];
-            if (cs.debuffs.indexOf(sdb) < 0) { cs.debuffs.push(sdb); events.push('⚔️ ' + cs.enemy + ': ' + sdb); }
-          }
+      // ทันทีที่บทที่ 1 เสร็จ เตรียม HUD และเซฟเริ่มต้นให้เข้าเล่นได้ทันที! (ไม่ต้องรอบทที่ 2-5)
+      if (chNum === 1) {
+        fullBook = loadFullStoryBook_();
+        const existingSave = loadStorySaveData_();
+        if (!existingSave) {
+          const startHud = normalizeHud_(bp.initial_hud);
+          setHud_(startHud);
+          pp_().setProperty('CHAR_DONE', '1');
+          pp_().setProperty('TURN', '1');
+          initialSave = {
+            currentNode: fullBook.start_node,
+            turn: 1,
+            hud: publicHud_(startHud),
+            combatState: null,
+            dead: false,
+            unlockedEndings: [],
+            checkpoints: [],
+            historyLog: []
+          };
+          upsert_('StorySave', 'state', JSON.stringify(initialSave));
         } else {
-          cs.curHp = Math.max(0, cs.curHp - Math.round(basePow * 0.4));
-          logs.push('⚡ "' + sk.name + '" เฉี่ยวเป้าหมายไป สร้างความเสียหายได้เพียงบางส่วน');
+          initialSave = existingSave;
         }
       }
-    } else if (act.kind === 'item') {
-      var inv = getInvSection(storySave.hud);
-      var it = inv && inv.items.filter(function (x) { return x.name === act.name; })[0];
-      if (!it) return;
-      var note = it.note || '';
-      var cDmg = note.match(/\[combat_dmg:(\d+)\]/i);
-      var uHp = note.match(/\[usable:hp:(\d+)\]/i);
-      var uMp = note.match(/\[usable:mp:(\d+)\]/i);
-      if (!cDmg && !uHp && !uMp && !/ยา|ฟื้น|ระเบิด|มีดสั้น|ยันต์/i.test(it.name + ' ' + note)) {
-        toast(['📌 ไอเท็มนี้ใช้ในการต่อสู้ไม่ได้']);
-        return;
-      }
-      add('user', '🎒 ใช้ไอเท็ม: ' + it.name);
-      removeStoryItem(it.name, 1, events);
-      if (cDmg) {
-        cs.curHp = Math.max(0, cs.curHp - Number(cDmg[1]));
-        logs.push('💣 ใช้ ' + it.name + ' โจมตีใส่ ' + cs.enemy + ' เต็มๆ!');
-      } else if (uMp) {
-        changeStoryBar('mp', Number(uMp[1]), events);
-        logs.push('💧 ฟื้นฟูพลังด้วย ' + it.name);
-      } else {
-        changeStoryBar('hp', uHp ? Number(uHp[1]) : 35, events);
-        logs.push('❤️ ฟื้นฟูบาดแผลด้วย ' + it.name);
-      }
-    } else if (act.kind === 'defend') {
-      add('user', '🛡️ ตั้งการ์ดป้องกันและดูเชิงศัตรู');
-      cs.defending = true;
-      changeStoryBar('mp', 8, events);
-      logs.push('🛡️ คุณตั้งรับอย่างรัดกุม ลดความเสียหายที่จะได้รับลง และฟื้นพลังเล็กน้อย');
-    } else if (act.kind === 'flee') {
-      add('user', '🏃 พยายามหาช่องทางหลบหนี!');
-      var fTotal = roll + defMod;
-      if (roll === 30 || fTotal >= 13) {
-        add('model', '🎲 ทอยหลบหนี D30: ' + roll + ' + ' + defMod + ' = ' + fTotal + ' — สำเร็จ! คุณฉากหลบออกมาได้อย่างหวุดหวิด!');
-        var nextAfterFlee = cs.fleeNext;
-        storySave.combatState = null;
-        storySave.hud.combat = null;
-        storySave.turn += 1;
-        renderStoryNode(nextAfterFlee, false);
-        return;
-      } else {
-        logs.push('🎲 ทอยหลบหนี D30: ' + roll + ' + ' + defMod + ' = ' + fTotal + ' — ล้มเหลว! ' + cs.enemy + ' ดักทางไว้ได้ทัน!');
-      }
-    }
-
-    if (cs.curHp <= 0) {
-      syncCombatHudBar();
-      events.push('🏆 เอาชนะ ' + cs.enemy + ' สำเร็จ!');
-      add('model', logs.join('\n') + '\n\n🏆 ' + cs.enemy + ' ล้มลงหมดสภาพ การต่อสู้ยุติลงด้วยชัยชนะของคุณ!');
-      var winNode = cs.winNext;
-      storySave.combatState = null;
-      storySave.hud.combat = null;
-      storySave.turn += 1;
-      setHud(storySave.hud, events);
-      renderStoryNode(winNode, false);
-      syncStoryServer(true);
-      return;
-    }
-
-    var moveTxt = cs.moves[Math.floor(Math.random() * cs.moves.length)];
-    var eRoll = Math.floor(Math.random() * 30) + 1;
-    var dodgeDc = 10 + Math.max(0, defMod);
-    if (eRoll <= 4 || eRoll < dodgeDc - 4) {
-      logs.push('⚡ ' + cs.enemy + ' ' + moveTxt + ' แต่คุณหลบพ้นได้อย่างฉิวเฉียด!');
-    } else {
-      var rawDmg = cs.enemyDmg - Math.max(0, cs.debuffs.length * 2) - Math.max(0, defMod);
-      if (eRoll >= 27) rawDmg = Math.round(rawDmg * 1.35);
-      if (cs.defending) rawDmg = Math.round(rawDmg * 0.4);
-      rawDmg = Math.max(3, rawDmg);
-      changeStoryBar('hp', -rawDmg, events);
-      logs.push('💥 ' + cs.enemy + ' ' + moveTxt + ' (คุณเสีย HP -' + rawDmg + ')');
-    }
-    cs.defending = false;
-
-    syncCombatHudBar();
-    setHud(storySave.hud, events);
-    add('model', logs.join('\n'));
-
-    var hpNow = findBar(storySave.hud, 'hp');
-    if (hpNow && hpNow.cur <= 0) {
-      storySave.dead = true;
-      storySave.combatState = null;
-      storySave.hud.combat = null;
-      setHud(storySave.hud);
-      renderDeathScreen('คุณพ่ายแพ้ในการต่อสู้กับ ' + cs.enemy);
-      syncStoryServer(true);
-      return;
-    }
-
-    renderStoryCombatButtons();
-    syncStoryServer(false);
-  }
-
-  function renderDeathScreen(reasonText) {
-    Array.prototype.forEach.call(document.querySelectorAll('.choices'), function (e) { e.remove(); });
-    setBarVisibility(false);
-
-    var card = mk('div', 'dead-card');
-    card.appendChild(mk('div', '', '💀 YOU DIED — ตัวละครของคุณเสียชีวิตแล้ว'));
-    var sub = mk('div', '', reasonText || 'การเดินทางของคุณสิ้นสุดลงตรงนี้...');
-    sub.style.fontSize = '13px'; sub.style.color = '#fca5a5'; sub.style.marginTop = '4px';
-    card.appendChild(sub);
-    chat.appendChild(card);
-
-    var box = mk('div', 'choices');
-    var cps = storySave.checkpoints || [];
-    if (cps.length) {
-      var lastCp = cps[cps.length - 1];
-      var bLoad = mk('button', 'chbtn rewind-btn', '⏪ โหลดเซฟกลับไปก่อนตาย (' + lastCp.label + ')');
-      bLoad.addEventListener('click', function () { restoreStoryCheckpoint(cps.length - 1); });
-      box.appendChild(bLoad);
-
-      if (cps.length > 1) {
-        var bPick = mk('button', 'chbtn', '📂 เลือกจุดเซฟย้อนเวลาก่อนหน้าอื่นๆ (' + cps.length + ' จุด)');
-        bPick.addEventListener('click', openRewindModal);
-        box.appendChild(bPick);
-      }
-    }
-
-    var bRestartSame = mk('button', 'chbtn', '🔄 เล่นตัวละครเดิมตั้งแต่ฉากแรก (ไม่ต้องรอ AI สร้างใหม่)');
-    bRestartSame.addEventListener('click', restartSameStoryCharacter);
-    box.appendChild(bRestartSame);
-
-    var bNewWorld = mk('button', 'chbtn combat-btn', '🌍 สร้างโลก/เนื้อเรื่องใหม่เลย');
-    bNewWorld.addEventListener('click', function () { modal.style.display = 'flex'; });
-    box.appendChild(bNewWorld);
-
-    chat.appendChild(box);
-    chat.scrollTop = chat.scrollHeight;
-  }
-
-  function renderEndingCard(node) {
-    Array.prototype.forEach.call(document.querySelectorAll('.choices'), function (e) { e.remove(); });
-    var unlockedCount = (storySave.unlockedEndings || []).length;
-    var totalEndings = (storyBook.endings && storyBook.endings.length) || 5;
-
-    var card = mk('div', 'end-card');
-    var badge = mk('div', '', '🏆 ปลดล็อกฉากจบ: ' + (node.ending_rank || 'Ending') + ' (' + unlockedCount + '/' + totalEndings + ')');
-    badge.style.color = '#c4b5fd'; badge.style.fontWeight = '600';
-    card.appendChild(badge);
-    var titleEl = mk('div', '', '✨ ' + (node.title || 'บทสรุปของการเดินทาง'));
-    titleEl.style.fontSize = '18px'; titleEl.style.fontWeight = '600'; titleEl.style.margin = '4px 0';
-    card.appendChild(titleEl);
-    var hintEl = mk('div', '', 'คุณเก็บฉากจบของเรื่องนี้ไปแล้ว ' + unlockedCount + ' จาก ' + totalEndings + ' แบบ! สามารถย้อนกลับไปเลือกเส้นทางอื่นเพื่อเก็บฉากจบที่เหลือได้ทันที');
-    hintEl.style.fontSize = '12px'; hintEl.style.color = '#aaa';
-    card.appendChild(hintEl);
-    chat.appendChild(card);
-
-    var box = mk('div', 'choices');
-    if ((storySave.checkpoints || []).length) {
-      var bRew = mk('button', 'chbtn rewind-btn', '⏪ ย้อนกลับไปจุดตัดสินใจก่อนหน้า (ล่าฉากจบอื่นต่อทันที)');
-      bRew.addEventListener('click', openRewindModal);
-      box.appendChild(bRew);
-    }
-    var bReplay = mk('button', 'chbtn', '🔄 เริ่มเล่นเรื่องเดิมตั้งแต่ต้นด้วยตัวละครเดิม');
-    bReplay.addEventListener('click', restartSameStoryCharacter);
-    box.appendChild(bReplay);
-
-    var bEndList = mk('button', 'chbtn chuse', '🏆 ดูสมุดสะสมฉากจบทั้งหมด (' + unlockedCount + '/' + totalEndings + ')');
-    bEndList.addEventListener('click', openEndingsModal);
-    box.appendChild(bEndList);
-
-    var bNew = mk('button', 'chbtn', '🌍 สร้างเกม/โลกใหม่');
-    bNew.addEventListener('click', function () { modal.style.display = 'flex'; });
-    box.appendChild(bNew);
-
-    chat.appendChild(box);
-    chat.scrollTop = chat.scrollHeight;
-  }
-
-  function restoreStoryCheckpoint(idx) {
-    var cp = storySave.checkpoints && storySave.checkpoints[idx];
-    if (!cp) return;
-    document.getElementById('rewindModal').style.display = 'none';
-    storySave.currentNode = cp.nodeId;
-    storySave.turn = cp.turn;
-    storySave.hud = cloneObj(cp.hud);
-    storySave.combatState = null;
-    storySave.dead = false;
-    storySave.checkpoints = storySave.checkpoints.slice(0, idx + 1);
-
-    chat.innerHTML = '';
-    add('model', '⏪ ย้อนเวลากลับมายัง: ' + cp.label);
-    setHud(storySave.hud);
-    renderStoryNode(cp.nodeId, true);
-    syncStoryServer(true);
-  }
-
-  function restartSameStoryCharacter() {
-    document.getElementById('rewindModal').style.display = 'none';
-    var keptEndings = (storySave && storySave.unlockedEndings) ? storySave.unlockedEndings.slice() : [];
-    storySave = {
-      currentNode: storyBook.start_node,
-      turn: 1,
-      hud: cloneObj(storyBook.initial_hud),
-      combatState: null,
-      dead: false,
-      unlockedEndings: keptEndings,
-      checkpoints: [],
-      historyLog: []
-    };
-    chat.innerHTML = '';
-    add('model', '🔄 เริ่มต้นการเดินทางครั้งใหม่ของตัวละครเดิมใน "' + storyBook.title + '"');
-    setHud(storySave.hud);
-    updateEndingsBtnLabel();
-    renderStoryNode(storySave.currentNode, false);
-    syncStoryServer(true);
-  }
-
-  function openRewindModal() {
-    var list = document.getElementById('rewindList');
-    list.innerHTML = '';
-    var cps = (storySave && storySave.checkpoints) || [];
-    if (!cps.length) {
-      list.appendChild(mk('div', 'hnote', '(ยังไม่มีจุดเซฟก่อนหน้า)'));
-    } else {
-      for (var i = cps.length - 1; i >= 0; i--) {
-        (function (idx) {
-          var cp = cps[idx];
-          var b = mk('button', 'cp-item');
-          var hpB = cp.hud && cp.hud.bars && cp.hud.bars[0];
-          b.innerHTML = '<span>' + cp.label + '</span><b style="color:#93c5fd;">' + (hpB ? '❤️ ' + hpB.cur : '') + '</b>';
-          b.addEventListener('click', function () { restoreStoryCheckpoint(idx); });
-          list.appendChild(b);
-        })(i);
-      }
-    }
-    var bStart = mk('button', 'choice', '🔄 เริ่มต้นตั้งแต่ฉากที่ 1 ใหม่ (ตัวละครเดิม)');
-    bStart.style.marginTop = '10px'; bStart.style.textAlign = 'center';
-    bStart.addEventListener('click', restartSameStoryCharacter);
-    list.appendChild(bStart);
-    document.getElementById('rewindModal').style.display = 'flex';
-  }
-
-  function openEndingsModal() {
-    var box = document.getElementById('endingsList');
-    box.innerHTML = '';
-    var eds = (storyBook && storyBook.endings) || [];
-    var unlocked = (storySave && storySave.unlockedEndings) || [];
-    eds.forEach(function (ed, idx) {
-      var got = unlocked.indexOf(ed.id) >= 0;
-      var r = mk('div', 'hrow');
-      var left = mk('div', '', (got ? '🏆 ' : '🔒 ') + (idx + 1) + '. [' + (ed.rank || 'Ending') + '] ' + (got ? ed.title : '??? (ยังไม่ปลดล็อก)'));
-      if (got && ed.summary) left.appendChild(mk('small', '', ed.summary));
-      r.appendChild(left);
-      box.appendChild(r);
     });
-    document.getElementById('endingsModal').style.display = 'flex';
-  }
 
-  document.getElementById('rewindbtn').addEventListener('click', openRewindModal);
-  document.getElementById('rewindClose').addEventListener('click', function () { document.getElementById('rewindModal').style.display = 'none'; });
-  document.getElementById('endingsbtn').addEventListener('click', openEndingsModal);
-  document.getElementById('endingsClose').addEventListener('click', function () { document.getElementById('endingsModal').style.display = 'none'; });
-</script>
-</body>
-</html>
+    return {
+      ok: true,
+      chapter: chNum,
+      nodeCount: nodes.length,
+      newNodes: newNodesMap,
+      readyToPlay: chNum === 1,
+      storyBook: fullBook,
+      storySave: initialSave
+    };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+
+// ---------- API 3: ซิงค์เซฟโหมดเนื้อเรื่องขึ้น Google Sheet เบื้องหลัง ----------
+function saveStoryProgress(req) {
+  try {
+    init_(req.code);
+    if (getGameMode_() !== 'story') return { ok: false, error: 'ไม่ได้อยู่ในโหมดเนื้อเรื่อง' };
+    const sv = req.save;
+    if (!sv || typeof sv !== 'object') throw new Error('ข้อมูลเซฟไม่ถูกต้อง');
+
+    const cleanSave = {
+      currentNode: hs_(sv.currentNode, 60),
+      turn: Math.max(1, Math.round(hn_(sv.turn, 1))),
+      hud: sv.hud || null,
+      combatState: sv.combatState || null,
+      dead: !!sv.dead,
+      unlockedEndings: Array.isArray(sv.unlockedEndings) ? sv.unlockedEndings.slice(0, 20) : [],
+      checkpoints: Array.isArray(sv.checkpoints) ? sv.checkpoints.slice(-12) : [],
+      historyLog: Array.isArray(sv.historyLog) ? sv.historyLog.slice(-30) : []
+    };
+
+    withSheetWriteLock_(function () {
+      ensureStorySheets_();
+      upsert_('StorySave', 'state', JSON.stringify(cleanSave));
+      if (cleanSave.hud) {
+        try { setHud_(cleanSave.hud); } catch (e) {}
+      }
+      pp_().setProperty('TURN', String(cleanSave.turn));
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+
+// ---------- API 4: ประเมินคำตอบเมื่อผู้เล่นพิมพ์เองในฉาก input ----------
+function evalStoryInput(req) {
+  try {
+    init_(req.code);
+    const nodeId = hs_(req.nodeId, 60);
+    const userText = hs_(req.text, 600);
+    if (!userText) return { ok: false, error: 'กรุณาพิมพ์ข้อความก่อนส่ง' };
+
+    const book = loadFullStoryBook_();
+    if (!book || !book.nodes[nodeId]) throw new Error('ไม่พบข้อมูลฉากนี้');
+    const node = book.nodes[nodeId];
+    const branches = Array.isArray(node.branches) ? node.branches : [];
+    if (!branches.length) throw new Error('ฉากนี้ไม่มีเส้นทางแยกสำหรับพิมพ์ตอบ');
+
+    const payload = '[ชื่อเรื่อง] ' + book.title +
+      '\n[สถานการณ์ของฉาก]\n' + node.text +
+      '\n[คำถาม/สิ่งที่ต้องทำ] ' + (node.input_prompt || '') +
+      '\n\n[สิ่งที่ผู้เล่นพิมพ์]\n' + userText +
+      '\n\n[ตัวเลือกเส้นทางที่เป็นไปได้ (branches)]\n' +
+      branches.map(function (b, i) { return i + ': เงื่อนไข = ' + b.condition; }).join('\n');
+
+    const raw = callSmartAI_('background_fast', STORY_EVAL_INPUT_PROMPT, [], payload, true, req.key);
+    let res;
+    try { res = hudParse_(raw); } catch (e) { res = { branch_index: 0, transition_text: '' }; }
+    let idx = Math.round(hn_(res.branch_index, 0));
+    if (idx < 0 || idx >= branches.length) idx = 0;
+
+    return {
+      ok: true,
+      next: branches[idx].next,
+      transition: hs_(res.transition_text, 600)
+    };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
